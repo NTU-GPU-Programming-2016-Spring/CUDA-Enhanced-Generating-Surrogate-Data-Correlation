@@ -50,12 +50,26 @@ inverse_read_stc('../lol_stc/s01_120415/unpack/bold/002/s01_120415_2_fsaverage_f
 
 因為 Matlab column based 的關係，原始資料之 row x column = **時間(秒數) x 大腦活動數據** = **約 450 x 10242**。以下提供了兩種轉換方式。執行完畢之後，`csv` 會存放在 `lol_stc_csv` 之目錄下。
 
+#### 使用方式
+
 ```
-% column based 的執行方式
+% column based
 convert2csv('../lol_stc', false);
 
-% row based 的執行方式
+% row based
 convert2csv('../lol_stc', true);
+```
+
+#### 輸出目錄結構說明
+
+./lol\_stc\_csv/<受試者編號(前)>-<受試時間>-<左右半腦>.csv
+
+e.g.
+
+```
+./lol_stc_csv/s01-002-lh.csv
+./lol_stc_csv/s01-002-rh.csv
+...
 ```
 
 (written by Salmon 05.11 06')
@@ -68,12 +82,28 @@ convert2csv('../lol_stc', true);
 
 這一部分會自動 mapping 受試時觀看腳色視角(AD1, SUP1, AD2 and SUP2)。1st 參數輸入 stc 的 root 資料夾位置；2nd 參數輸入 subject_folder.xlsx 的路徑。執行完畢之後，輸出的圖片 `.png` 會存放在 `lol_stc_brain_image_render` 之目錄下。
 
+#### 使用方式
+
 ```
 % 執行方式
 render_all_brains('../lol_stc', '../subject_folder.xlsx');
 ```
 
-p.s. 暫時未作截頭截尾的部分。
+#### 輸出目錄結構說明
+
+./lol\_stc_brain\_image\_render/<受試者編號>/<受試時間>-<視角>/n.png
+
+e.g.
+
+```
+./lol_stc_brain_image_render/s01_120415/002_AD1/1.png
+./lol_stc_brain_image_render/s01_120415/002_AD1/2.png
+./lol_stc_brain_image_render/s01_120415/006_AD2/1.png
+...
+```
+
+p.s. 1 暫時未作截頭截尾的部分。
+p.s. 2 未分左腦右腦，後者會覆蓋前者。
 
 (written by Salmon 05.19 06')
 
