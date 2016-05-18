@@ -20,7 +20,7 @@ function [] = render_all_brains(strPath, mappingExcel)
         [findRows2, findCols2] = find(ismember(xlsTxt(findRows, :), testTime));
         replayView = xlsTxt(1, findCols2);
         % Create the output folder.
-        outputPath = strcat(outputPathRoot, subjectNo, '/', testTime, '_', replayView, '/');
+        outputPath = strcat(outputPathRoot, subjectNo, '/', testTime, '_', replayView, '_', halfBrain, '/');
         outputPath = outputPath{1};
         if ~exist(outputPath, 'dir')
             mkdir(outputPath);
