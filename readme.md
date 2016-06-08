@@ -48,29 +48,29 @@ inverse_read_stc('../lol_stc/s01_120415/unpack/bold/002/s01_120415_2_fsaverage_f
 
 檔案名稱: `convert2csv.m`。
 
-因為 Matlab column based 的關係，原始資料之 row x column = **時間(秒數) x 大腦活動數據** = **約 450 x 10242**。以下提供了兩種轉換方式。執行完畢之後，`csv` 會存放在 `lol_stc_csv` 之目錄下。
+因為 Matlab column based 的關係，原始資料之 row x column = **時間(秒數) x 大腦活動數據** = **約 450 x 10242**。以下提供了兩種轉換方式。
 
-而第三個參數將會刪除由前 n 個 time series；第四個參數會從首連續保留下 m 個 time series。會這麼做主要是讓所有文件的大小一致。
+1st 參數輸入 stc 的 root 資料夾位置；2nd 參數輸入 subject_folder.xlsx 的路徑。3rd 參數決定使用 row based or column based；4th 參數將會刪除由前 n 個 time series；5th 參數會從首連續保留下 m 個 time series。執行完畢之後，`csv` 會存放在 `lol_stc_csv` 之目錄下。
 
 #### 使用方式
 
 ```
 % column based
-convert2csv('../lol_stc', false, 5, 440);
+convert2csv('../lol_stc', '../subject_folder.xlsx', false, 5, 440);
 
 % row based
-convert2csv('../lol_stc', true, 5, 440);
+convert2csv('../lol_stc', '../subject_folder.xlsx', true, 5, 440);
 ```
 
 #### 輸出目錄結構說明
 
-> ./lol\_stc\_csv/<受試者編號(前)>-<受試時間>-<左右半腦>.csv
+> ./lol\_stc\_csv/<受試者編號>-<受試時間>-<視角>-<左右半腦>.csv
 
 e.g.
 
 ```
-./lol_stc_csv/s01-002-lh.csv
-./lol_stc_csv/s01-002-rh.csv
+./lol_stc_csv/s01_120415-002-lh.csv
+./lol_stc_csv/s01_120415-002-rh.csv
 ...
 ```
 

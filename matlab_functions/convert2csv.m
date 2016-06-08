@@ -1,12 +1,25 @@
-function [] = convert2csv(strPath, rowBased, removeCounts, selectCounts)
-    files = getAllFiles(strPath);
+function [] = convert2csv(strPath, mappingExcel, rowBased, removeCounts, selectCounts)
+    % Output path.
     outputPath = strcat(strPath, '_csv/');
+    % All .stc files.
+    files = getAllFiles(strPath);
+    % Load the mapping info.
+    [xlsNum, xlsTxt, xlsRaw] = xlsread(mappingExcel, 'A2:E19');
     for i = 1:length(files)
         % Generate the shorter name of stc file.
         string = files{i};
-        pattern = 'lol_stc\\([^_]+)_.*\\(\d+)\\.*-(\wh)\.stc$';
+        pattern = 'lol_stc\\([^\\]+).*\\(\d+)\\.*-(\wh)\.stc$';
         [tokens, matches] = regexp(string, pattern, 'tokens', 'match');
-        newFileName = strcat(outputPath, tokens{1}(1), '-', tokens{1}(2), '-', tokens{1}(3), '.csv');
+        % Infomation in pathname.
+        subjectNo = tokens{1}(1);
+        testTime  = tokens{1}(2);
+        halfBrain = tokens{1}(3);
+        % Mapping the data to find the view of game replay.
+        [findRows, findCols]   = find(ismember(xlsTxt, subjectNo));
+        [findRows2, findCols2] = find(ismember(xlsTxt(findRows, :), testTime));
+        replayView = xlsTxt(1, findCols2);
+        % Generate file name.
+        newFileName = strcat(outputPath, subjectNo, '-', testTime, '-', replayView, '-', halfBrain, '.csv');
         % Create the output folder, then write the csv.
         if ~exist(outputPath, 'dir')
             mkdir(outputPath);

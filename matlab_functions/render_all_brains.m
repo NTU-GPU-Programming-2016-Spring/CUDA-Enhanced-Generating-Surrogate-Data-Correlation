@@ -9,7 +9,7 @@ function [] = render_all_brains(strPath, mappingExcel)
     for i = 1:length(files)
         % Generate the shorter name of stc file.
         string = files{i};
-        pattern = '^..\\lol_stc\\([^\\]+).*\\(\d+)\\.*-(\wh)\.stc$';
+        pattern = 'lol_stc\\([^\\]+).*\\(\d+)\\.*-(\wh)\.stc$';
         [tokens, matches] = regexp(string, pattern, 'tokens', 'match');
         % Infomation in pathname.
         subjectNo = tokens{1}(1);
