@@ -50,14 +50,16 @@ inverse_read_stc('../lol_stc/s01_120415/unpack/bold/002/s01_120415_2_fsaverage_f
 
 因為 Matlab column based 的關係，原始資料之 row x column = **時間(秒數) x 大腦活動數據** = **約 450 x 10242**。以下提供了兩種轉換方式。執行完畢之後，`csv` 會存放在 `lol_stc_csv` 之目錄下。
 
+而第三個參數將會刪除由前 n 個 time series；第四個參數會從首連續保留下 m 個 time series。會這麼做主要是讓所有文件的大小一致。
+
 #### 使用方式
 
 ```
 % column based
-convert2csv('../lol_stc', false);
+convert2csv('../lol_stc', false, 5, 440);
 
 % row based
-convert2csv('../lol_stc', true);
+convert2csv('../lol_stc', true, 5, 440);
 ```
 
 #### 輸出目錄結構說明
@@ -72,7 +74,7 @@ e.g.
 ...
 ```
 
-(written by Salmon 05.11 06')
+(written by Salmon 06.09 06')
 
 ---
 
