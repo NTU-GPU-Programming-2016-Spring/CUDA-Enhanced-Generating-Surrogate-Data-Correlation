@@ -3,5 +3,6 @@ lol_stc/
 lol_stc_brain_image_render/
 lol_stc_csv/
 render_example/
+video/
 
 *.asv

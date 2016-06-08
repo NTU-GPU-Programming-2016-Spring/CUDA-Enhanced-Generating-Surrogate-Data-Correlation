@@ -1,10 +1,10 @@
-function [] = convert2csv(strPath, rowBased)
+function [] = convert2csv(strPath, rowBased, removeCounts, selectCounts)
     files = getAllFiles(strPath);
     outputPath = strcat(strPath, '_csv/');
     for i = 1:length(files)
         % Generate the shorter name of stc file.
         string = files{i};
-        pattern = '^..\\lol_stc\\([^_]+)_.*\\(\d+)\\.*-(\wh)\.stc$';
+        pattern = 'lol_stc\\([^_]+)_.*\\(\d+)\\.*-(\wh)\.stc$';
         [tokens, matches] = regexp(string, pattern, 'tokens', 'match');
         newFileName = strcat(outputPath, tokens{1}(1), '-', tokens{1}(2), '-', tokens{1}(3), '.csv');
         % Create the output folder, then write the csv.
@@ -12,6 +12,10 @@ function [] = convert2csv(strPath, rowBased)
             mkdir(outputPath);
         end
         stc = inverse_read_stc(files{i});
+        %%% Remove some columns from start.
+        stc(:, 1:removeCounts) = [];
+        %%% Select some columns from start.
+        stc = stc(:, 1:selectCounts);
         if rowBased
             stc = stc.';
         end
