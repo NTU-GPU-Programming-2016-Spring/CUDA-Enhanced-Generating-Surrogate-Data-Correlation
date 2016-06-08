@@ -10,6 +10,8 @@
 
 matlab_functions 會新增程式，並於下方補充說明。基本上，這裡提供的檔案，全部可直接覆蓋教授所提供的檔案。
 
+其中 `subject_folder.xlsx` 請**務必下載後取代**，有一個空白字元做了移除動作。
+
 ## 環境建置
 
 以我來說，上述的檔案的根目錄為：
@@ -32,7 +34,7 @@ matlab_functions 會新增程式，並於下方補充說明。基本上，這裡
 
 `getenv('SUBJECTS_DIR')`
 
-## 相關操作
+## Matlab 相關操作
 
 ### 以 Matlab 讀取腦半球活動紀錄
 
@@ -110,3 +112,15 @@ p.s. 1 暫時未作截頭截尾的部分。
 (written by Salmon 05.19 06')
 
 ---
+
+## CUDA 相關操作
+
+直接執行（必須先使用 Matlab `convert2csv` column based 輸出 csv 資料夾）：
+
+```
+sh shell.sh
+```
+
+若有其它需求可開啟該文件，修改後重新執行。
+
+(written by Salmon 05.19 06')
