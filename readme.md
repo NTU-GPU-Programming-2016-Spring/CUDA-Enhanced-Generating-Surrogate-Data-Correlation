@@ -107,8 +107,6 @@ e.g.
 ...
 ```
 
-p.s. 1 暫時未作截頭截尾的部分。
-
 (written by Salmon 05.19 06')
 
 ---
@@ -123,4 +121,4 @@ sh shell.sh
 
 若有其它需求可開啟該文件，修改後重新執行。
 
-(written by Salmon 05.19 06')
+(written by Salmon 06.09 06')
