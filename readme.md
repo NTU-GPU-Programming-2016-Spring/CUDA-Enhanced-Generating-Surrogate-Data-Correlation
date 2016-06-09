@@ -80,6 +80,21 @@ e.g.
 
 ---
 
+### preprocess (remove global mean and nuissance effects)
+
+檔案名稱: `preprocess.m`。
+
+csv file 格式為 column based，給定上面csv檔案輸出的資料夾，會先 remove global mean and nuissance effects，再輸出到output資料夾，檔案格式和之前一樣。
+
+#### 使用方式
+
+```
+preprocess('lol_stc_csv', 'lol_stc_csv_processed')
+
+```
+
+---
+
 ### 輸出全部 stc 大腦圖片
 
 檔案名稱: `render_all_brains.m`。
