@@ -38,7 +38,7 @@ function [] = convert2csv(strPath, mappingExcel, rowBased, removeCounts, selectC
             stc = stc.';
         end
         disp(strcat('Now writing: ', newFileName));
-        csvwrite(newFileName{1}, stc);
+        dlmwrite(newFileName{1}, stc, 'precision', 15);
     end
 end
 
