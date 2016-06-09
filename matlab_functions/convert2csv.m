@@ -8,7 +8,12 @@ function [] = convert2csv(strPath, mappingExcel, rowBased, removeCounts, selectC
     for i = 1:length(files)
         % Generate the shorter name of stc file.
         string = files{i};
-        pattern = 'lol_stc\\([^\\]+).*\\(\d+)\\.*-(\wh)\.stc$';
+        if isunix
+          pattern = 'lol_stc\/([^\/]+).*\/(\d+)\/.*-(\wh)\.stc$';
+        else
+          pattern = 'lol_stc\\([^\\]+).*\\(\d+)\\.*-(\wh)\.stc$';
+        end
+
         [tokens, matches] = regexp(string, pattern, 'tokens', 'match');
         % Infomation in pathname.
         subjectNo = tokens{1}(1);
