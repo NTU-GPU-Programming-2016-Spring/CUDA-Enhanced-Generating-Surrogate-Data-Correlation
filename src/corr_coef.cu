@@ -1,7 +1,27 @@
 #include <cstdio>
 #include <cstdlib>
+#include <thrust/count.h>
+#include <thrust/execution_policy.h>
 
-#define REPEAT_TIMES 100000
+#define REPEAT_TIMES 10
+
+struct is_less_than
+{
+  float num;
+
+  is_less_than(float x) {
+    num = x;
+  }
+
+  __host__ __device__
+  bool operator() (float x)
+  {
+    if (x < num)
+      return true;
+    else
+      return false;
+  }
+};
 
 __device__ float calSum(const float *x, int length)
 {
@@ -65,27 +85,57 @@ __global__ void calculateCorrelationCoefficientMatrix(float *all_corr_coef_matri
 
   for (int i = 0; i < subject_size; i++) {
     const float *data_x = data_matrix + i * time_size;
-    corr_coef_matrix[i * subject_size + i] = 1.0;
+    corr_coef_matrix[i * subject_size + i] = 0.0;
 
     for (int j = i + 1; j < subject_size; j++) {
       const float *data_y = data_matrix + j * time_size;
       const float coef = calCorrCoef(data_x, data_y, time_size);
 
       corr_coef_matrix[i * subject_size + j] = coef;
-      corr_coef_matrix[j * subject_size + i] = coef;
+      corr_coef_matrix[j * subject_size + i] = 0.0;
     }
   }
 }
 
+__device__ float calFisherTransform(const float x, const int time_size)
+{
+  // z=0.5.*log((1+rr)./(1-rr))./(1/sqrt(size(data,1)/2.34-3));
+  return 0.5 * logf((1+x) / (1-x)) / rsqrt((float)time_size/2.34 - 3);
+}
+
+__global__ void calculateInterSubjectCorrelation(float *isc_array, float *all_corr_coef_matrix, const int subject_size, const int time_size)
+{
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= REPEAT_TIMES)
+    return;
+
+  float *corr_coef_matrix = all_corr_coef_matrix + idx * subject_size * subject_size;
+
+  float sum = 0;
+  float count = subject_size * (subject_size - 1) / 2;
+
+  for (int i = 0; i < subject_size; i++) {
+    for (int j = i + 1; j < subject_size; j++) {
+      const float tmp = corr_coef_matrix[i * subject_size + j];
+      sum += calFisherTransform(tmp, time_size);
+    }
+  }
+
+  const float mean = sum / count;
+  isc_array[idx] = mean;
+}
+
 int main(int argc, char **argv)
 {
-  int subject_size = 3, time_size = 5;
+  int subject_size = 3, time_size = 8;
 
   // TODO padding
-  float *h_data_matrix, *h_coef_matrix;
+  float *h_data_matrix, *h_coef_matrix, *h_isc_array;
+  float *d_data_matrix, *d_coef_matrix, *d_isc_array;
 
   h_data_matrix = (float *)malloc(sizeof(float) * REPEAT_TIMES * subject_size * time_size);
   h_coef_matrix = (float *)malloc(sizeof(float) * REPEAT_TIMES * subject_size * subject_size);
+  h_isc_array = (float *)malloc(sizeof(float) * REPEAT_TIMES);
 
   for(int i = 0; i < REPEAT_TIMES; i++) {
     int start = i * subject_size * time_size;
@@ -96,10 +146,9 @@ int main(int argc, char **argv)
     }
   }
 
-  float *d_data_matrix, *d_coef_matrix;
-
   cudaMalloc(&d_data_matrix, sizeof(float) * REPEAT_TIMES * subject_size * time_size);
   cudaMalloc(&d_coef_matrix, sizeof(float) * REPEAT_TIMES * subject_size * subject_size);
+  cudaMalloc(&d_isc_array, sizeof(float) * REPEAT_TIMES);
 
   cudaMemcpy(d_data_matrix, h_data_matrix, sizeof(float) * REPEAT_TIMES * subject_size * time_size, cudaMemcpyHostToDevice);
 
@@ -107,29 +156,53 @@ int main(int argc, char **argv)
   int nblock = REPEAT_TIMES/blocksize + REPEAT_TIMES%blocksize==0?0:1;
 
   calculateCorrelationCoefficientMatrix<<<nblock, blocksize>>>(d_coef_matrix, d_data_matrix, subject_size, time_size);
-
+  cudaDeviceSynchronize();
+  calculateInterSubjectCorrelation<<<nblock, blocksize>>>(d_isc_array, d_coef_matrix, subject_size, time_size);
   cudaDeviceSynchronize();
 
   cudaMemcpy(h_coef_matrix, d_coef_matrix, sizeof(float) * REPEAT_TIMES * subject_size * subject_size, cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_isc_array, d_isc_array, sizeof(float) * REPEAT_TIMES, cudaMemcpyDeviceToHost);
 
-  for(int i = 0; i < subject_size; i++) {
-    for(int j = 0; j < time_size; j++) {
-      printf("%f ", h_data_matrix[i * time_size + j]);
+  int result = thrust::count_if(thrust::host, h_isc_array, h_isc_array + REPEAT_TIMES, is_less_than(-0.02));
+
+  {
+    const int idx = rand() % REPEAT_TIMES;
+
+    for(int i = 0; i < subject_size; i++) {
+      for(int j = 0; j < time_size; j++) {
+        printf("%f ", h_data_matrix[idx * subject_size * time_size + i * time_size + j]);
+      }
+      printf("\n");
+    }
+    printf("--------------------\n");
+
+
+    for (int i = 0; i < subject_size; i ++ ) {
+      for (int j = 0; j < subject_size; j ++) {
+        printf("%f ", h_coef_matrix[idx * subject_size * subject_size + i * subject_size + j]);
+      }
+      printf("\n");
+    }
+    printf("--------------------\n");
+
+    printf("%f\n", h_isc_array[idx]);
+
+    printf("--------------------\n");
+    printf("%d\n", result);
+    for(int i = 0; i < REPEAT_TIMES; i++) {
+      printf("%f ", h_isc_array[i]);
     }
     printf("\n");
+
   }
-  printf("--------------------\n");
-  for (int i = 0; i < subject_size; i ++ ) {
-    for (int j = 0; j < subject_size; j ++) {
-      printf("%f ", h_coef_matrix[i * subject_size + j]);
-    }
-    printf("\n");
-  }
+
 
   cudaFree(d_data_matrix);
   cudaFree(d_coef_matrix);
+  cudaFree(d_isc_array);
   free(h_data_matrix);
   free(h_coef_matrix);
+  free(h_isc_array);
 
   return 0;
 }
