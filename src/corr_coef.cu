@@ -5,6 +5,18 @@
 
 #define REPEAT_TIMES 100000
 
+#define cudaCheckErrors(msg) \
+  do { \
+    cudaError_t __err = cudaGetLastError(); \
+    if (__err != cudaSuccess) { \
+      fprintf(stderr, "Fatal error: %s (%s at %s:%d)\n", \
+          msg, cudaGetErrorString(__err), \
+          __FILE__, __LINE__); \
+      fprintf(stderr, "*** FAILED - ABORTING\n"); \
+      exit(1); \
+    } \
+  } while (0)
+
 struct is_less_than
 {
   float num;
@@ -23,7 +35,7 @@ struct is_less_than
   }
 };
 
-__device__ float calSum(const float *x, int length)
+__device__ float calSum(const float *x, const int length)
 {
   float sum = 0;
   for(int i = 0; i < length; i++) {
@@ -32,12 +44,12 @@ __device__ float calSum(const float *x, int length)
   return sum;
 }
 
-__device__ float calAvg(const float *x, int length)
+__device__ float calAvg(const float *x, const int length)
 {
   return calSum(x, length) / length;
 }
 
-__device__ float calSquareSum(const float *x, int length)
+__device__ float calSquareSum(const float *x, const int length)
 {
   float sum = 0;
   for(int i = 0; i < length; i++) {
@@ -46,7 +58,7 @@ __device__ float calSquareSum(const float *x, int length)
   return sum;
 }
 
-__device__ float calMultiplySum(const float *x, const float *y, int length)
+__device__ float calMultiplySum(const float *x, const float *y, const int length)
 {
   float sum = 0;
   for(int i = 0; i < length; i++) {
@@ -55,7 +67,7 @@ __device__ float calMultiplySum(const float *x, const float *y, int length)
   return sum;
 }
 
-__device__ float calStd(const float *x, int length)
+__device__ float calStd(const float *x, const int length)
 {
   const float x_square_sum = calSquareSum(x, length);
   const float x_avg = calAvg(x, length);
@@ -137,7 +149,7 @@ int main(int argc, char **argv)
   cudaMemcpy(d_data_matrix, h_data_matrix, sizeof(float) * REPEAT_TIMES * subject_size * time_size, cudaMemcpyHostToDevice);
 
   int blocksize = 32;
-  int nblock = REPEAT_TIMES/blocksize + REPEAT_TIMES%blocksize==0?0:1;
+  int nblock = REPEAT_TIMES/blocksize + (REPEAT_TIMES%blocksize==0?0:1);
 
   calculateInterSubjectCorrelation<<<nblock, blocksize>>>(d_isc_array, d_coef_matrix, d_data_matrix, subject_size, time_size);
   cudaDeviceSynchronize();
@@ -147,9 +159,12 @@ int main(int argc, char **argv)
 
   int result = thrust::count_if(thrust::host, h_isc_array, h_isc_array + REPEAT_TIMES, is_less_than(h_isc_array[0]));
 
+
   // {
+  //   cudaCheckErrors("?");
   //   const int idx = rand() % REPEAT_TIMES;
 
+  //   printf("%d\n", idx);
   //   for(int i = 0; i < subject_size; i++) {
   //     for(int j = 0; j < time_size; j++) {
   //       printf("%f ", h_data_matrix[idx * subject_size * time_size + i * time_size + j]);
