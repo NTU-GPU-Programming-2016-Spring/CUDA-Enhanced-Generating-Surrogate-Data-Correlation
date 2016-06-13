@@ -5,7 +5,7 @@
 #include <thrust/count.h>
 #include <thrust/execution_policy.h>
 
-#define REPEAT_TIMES 100000
+#define REPEAT_TIMES 10000
 
 #define cudaCheckErrors(msg) \
   do { \
@@ -19,7 +19,7 @@
     } \
   } while (0)
 
-struct is_less_than
+struct is_bigger_than
 {
   float num;
 
@@ -30,7 +30,7 @@ struct is_less_than
   __host__ __device__
   bool operator() (float x)
   {
-    if (x < num)
+    if (x >= num)
       return true;
     else
       return false;
@@ -141,9 +141,64 @@ __global__ void calculateInterSubjectCorrelation(float *isc_array, const float *
   isc_array[idx] = sum / matrix_works;
 }
 
+__global__ void rearrangeMatrixPosition(float *data_matrix, const float *source_matrix, const int subject_size, const int time_size)
+{
+  // 1st subject_size, 2nd REPEAT_TIMES, 3rd time_size
+  // to
+  // 1st REPEAT_TIMES, 2nd time_size, 3rd subject_size
+
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= REPEAT_TIMES * time_size * subject_size)
+    return;
+
+  const int subject_idx = idx / (REPEAT_TIMES * time_size);
+  const int repeat_idx = (idx % (REPEAT_TIMES * time_size)) / time_size;
+  const int time_idx = (idx % (REPEAT_TIMES * time_size)) % time_size;
+
+  const int data_idx = repeat_idx * time_size * subject_size + time_idx * subject_size + subject_idx;
+  
+  data_matrix[data_idx] = source_matrix[idx];
+}
+
+void printMatrix(const float *data, const int first, const int second, const int third)
+{
+  float *tmp = (float *)malloc(sizeof(float) * first * second * third);
+  cudaMemcpy(tmp, data, sizeof(float) * first * second * third, cudaMemcpyDeviceToHost);
+
+  printf("%% 1st:%d 2nd:%d 3rd:%d\n", first, second, third);
+  for (int i = 0; i < first; i++ ) {
+    for (int j = 0; j < second; j++ ) {
+      printf("%% ");
+      for (int k = 0; k < third; k++ ) {
+        printf("%f ", tmp[i*second*third + j*third + k]);
+      }
+      printf("\n");
+    }
+    printf("%%\n");
+  }
+
+  free(tmp);
+}
+
+void transposeMatrix(float *data_matrix, const int subject_size, const int time_size)
+{
+  float *tmp;
+  cudaMalloc(&tmp, sizeof(float) * subject_size * REPEAT_TIMES * time_size);
+  cudaMemcpy(tmp, data_matrix, sizeof(float) * subject_size * REPEAT_TIMES * time_size, cudaMemcpyDeviceToDevice);
+
+  int total_works = REPEAT_TIMES * subject_size * time_size;
+  int blocksize = 128;
+  int nblock = total_works/blocksize + (total_works%blocksize==0?0:1);
+
+  rearrangeMatrixPosition<<<nblock, blocksize>>>(data_matrix, tmp, subject_size, time_size);
+  cudaDeviceSynchronize();
+
+  cudaFree(tmp);
+}
+
 int main(int argc, char **argv)
 {
-  srand(time(NULL));
+  // srand(time(NULL));
   std::clock_t start;
 
   const int subject_size = 8, time_size = 440;
@@ -162,7 +217,7 @@ int main(int argc, char **argv)
     for(int j = 0; j < time_size; j++)
       for(int k = 0; k < subject_size; k++)
         h_data_matrix[i * time_size * subject_size + j * subject_size + k] = rand();
-  printf("%% Generating data: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
+  printf("%% Generating data: %fs\n", (std::clock() - start) / (float) CLOCKS_PER_SEC);
 
   cudaMalloc(&d_data_matrix, sizeof(float) * REPEAT_TIMES * time_size * subject_size);
   cudaMalloc(&d_coef_matrix, sizeof(float) * REPEAT_TIMES * matrix_works);
@@ -172,6 +227,11 @@ int main(int argc, char **argv)
   cudaMemcpy(d_data_matrix, h_data_matrix, sizeof(float) * REPEAT_TIMES * subject_size * time_size, cudaMemcpyHostToDevice);
   cudaMemset(d_coef_matrix, 0, sizeof(float) * REPEAT_TIMES * matrix_works);
   cudaCheckErrors("cudaMemcpy and cudaMemset");
+
+  start = std::clock();
+  transposeMatrix(d_data_matrix, subject_size, time_size);
+  cudaCheckErrors("transposeMatrix");
+  printf("%% transposeMatrix: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
 
   int blocksize = 128;
   int nblock = total_works/blocksize + (total_works%blocksize==0?0:1);
@@ -192,9 +252,10 @@ int main(int argc, char **argv)
   cudaMemcpy(h_coef_matrix, d_coef_matrix, sizeof(float) * REPEAT_TIMES * matrix_works, cudaMemcpyDeviceToHost);
   cudaMemcpy(h_isc_array, d_isc_array, sizeof(float) * REPEAT_TIMES, cudaMemcpyDeviceToHost);
 
-  int result = thrust::count_if(thrust::host, h_isc_array, h_isc_array + REPEAT_TIMES, is_less_than(h_isc_array[0]));
+  int result = thrust::count_if(thrust::host, h_isc_array, h_isc_array + REPEAT_TIMES, is_bigger_than(h_isc_array[0]));
 
   {
+    cudaMemcpy(h_data_matrix, d_data_matrix, sizeof(float) * REPEAT_TIMES * subject_size * time_size, cudaMemcpyDeviceToHost);
     const int idx = rand() % REPEAT_TIMES;
     printf("%% idx: %d\n", idx);
 
