@@ -54,7 +54,7 @@ __device__ double calStd(const double *x, const int length, const int step)
   const double x_square_sum = calSquareSum(x, length, step);
   const double x_avg = calAvg(x, length, step);
 
-  return sqrtf((x_square_sum - length * x_avg * x_avg) / (length - 1));
+  return sqrt((x_square_sum - length * x_avg * x_avg) / (length - 1));
 }
 
 __device__ double calCorrCoef(const double *x, const double *y, const int length, const int step)
@@ -71,7 +71,7 @@ __device__ double calCorrCoef(const double *x, const double *y, const int length
 // __device__ double calFisherTransform(const double x, const int time_size)
 // {
 //   // z=0.5.*log((1+rr)./(1-rr))./(1/sqrt(size(data,1)/2.34-3));
-//   return 0.5 * logf((1+x) / (1-x)) / rsqrt((double)time_size/2.34 - 3);
+//   return 0.5 * log((1+x) / (1-x)) / rsqrt((double)time_size/2.34 - 3);
 // }
 
 __global__ void calculateCorrelationCoefficientMatrix(double *all_corr_coef_matrix, const double *all_data_matrix, const int subject_size, const int time_size, const int repeat_times)
