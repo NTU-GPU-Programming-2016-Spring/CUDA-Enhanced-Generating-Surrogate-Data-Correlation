@@ -7,7 +7,7 @@ rm -rf ./debug
 mkdir -p ./debug
 
 # Compile the CUDA program.
-nvcc -c --std=c++11 -arch=sm_30 ./src/time_series_aaft.cu -o ./debug/time_series_aaft.o
+nvcc -c --std=c++11 -arch=sm_30  -arch=sm_20 -lcufft -lcurand -I ./src/headers/ ./src/time_series_aaft.cu -o ./debug/time_series_aaft.o
 nvcc -c --std=c++11 -arch=sm_30 ./src/fmri_corr_coef.cu -o ./debug/fmri_corr_coef.o
 nvcc --std=c++11 -arch=sm_30 ./debug/time_series_aaft.o ./debug/fmri_corr_coef.o ./src/main.cu -o ./debug/out
 

@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
 
 		// Kernel - Amplitude Adjusted Fourier Transform (AAFT).
 		blocks = ceil(columns * RANDOM_TIMES / threads);
-		amplitudeAdjustedFourierTransform <<<blocks, threads>>> (aaft_g, data_g, (i + 1), columns);
+		amplitudeAdjustedFourierTransform(aaft_g, data_g, (i + 1), columns);
 
 		// Kernel - Correlation coefficient.
 		blocks = ceil(RANDOM_TIMES / threads);
