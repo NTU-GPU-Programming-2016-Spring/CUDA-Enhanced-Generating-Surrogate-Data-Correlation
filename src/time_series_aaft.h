@@ -1,3 +1,3 @@
 #pragma once
 
-__global__ void amplitudeAdjustedFourierTransform(double *aaft, const double *data, const int row, const int maxColumns);
+void amplitudeAdjustedFourierTransform(double *d_aaft, double *d_data, const int viewers, const int randomNum, const int timePoints);
