@@ -9,7 +9,7 @@
 #include "time_series_aaft.h"
 #include "fmri_corr_coef.h"
 
-#define RANDOM_TIMES 100000
+#define RANDOM_TIMES 10
 
 // Functions.
 std::vector<double> loadBrainData(std::string path, int &rows, int &columns);
@@ -62,24 +62,28 @@ int main(int argc, char **argv) {
 	int rows = 0, columns = 0;
 	// GPU variables.
 	int threads = 32, blocks;
-	double *data_g, *aaft_g, *coef_g;
+	double *data_g, *aaft_g, *coef_g, *d_aaft_data;
 
 	// Release memory.
 	cudaFree(0);
 
 	// Load CSV each viewer's data.
+	fprintf(stderr, "Loading CSV data ...\r");
 	for (int i = 0; i < viewers; i++)
 		data.at(i) = loadBrainData(csvPath.at(i), rows, columns);
+	fprintf(stderr, "Loading CSV data ... done\n");
 
 	cudaMalloc(&data_g, sizeof(double) * columns * viewers);
 	cudaMalloc(&aaft_g, sizeof(double) * columns * viewers * RANDOM_TIMES);
 	cudaMalloc(&coef_g, sizeof(double) * RANDOM_TIMES);
+	cudaMalloc(&d_aaft_data, columns * viewers*RANDOM_TIMES*sizeof(double));
 
 	// Calculate the new time series each row by Amplitude Adjusted Fourier Transform (AAFT), then calculate correlation coefficient.
 	// Most of the case, rows are 10,242 times; columns are 450 times.
 	for (int i = 0; i < rows; i++) {
 		// Concatenate the specific position (row) each viewer's data.
 		std::vector<double> subdata;
+		fprintf(stderr, "Processing row ... %5d\r", i);
 		for (int j = 0; j < viewers; j++)
 			subdata.insert(subdata.end(), data.at(j).begin() + i * columns, data.at(j).begin() + (i + 1) * columns);
 
@@ -91,20 +95,19 @@ int main(int argc, char **argv) {
 
 		// Kernel - Amplitude Adjusted Fourier Transform (AAFT).
 		// prepare data 
-		double *d_aaft_data;
-		cudaMalloc(&d_aaft_data, columns * viewers*RANDOM_TIMES*sizeof(double));
-
 		copyData<<<(columns*viewers+threads-1)/threads, threads>>>(d_aaft_data, data_g, RANDOM_TIMES, columns, viewers);
-
 		amplitudeAdjustedFourierTransform(aaft_g, d_aaft_data, viewers, RANDOM_TIMES, columns);
 
 		// Kernel - Correlation coefficient.
 		correlationCoefficient(coef_g, aaft_g, viewers, columns, RANDOM_TIMES);
 	}
+	fprintf(stderr, "Processing row ... %5s\r", "done");
 
 	// Release memory.
 	cudaFree(aaft_g);
 	cudaFree(coef_g);
+	cudaFree(data_g);
+	cudaFree(d_aaft_data);
 
 	// Message.
 	std::cout << "Data in CPU: " << " [rows: " << rows << ", columns: " << columns << "], total size: " << data.at(0).size() << ".\n\n";
