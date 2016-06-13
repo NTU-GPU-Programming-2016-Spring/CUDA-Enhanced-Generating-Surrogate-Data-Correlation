@@ -17,6 +17,32 @@ std::vector<double> loadBrainData(std::string path, int &rows, int &columns);
 // Sub functions.
 std::vector<std::string> splitString(std::string str, char delimiter);
 
+// prepare data
+__global__ void copyData(double *target, double *data, int copyTimes, int timeSize, int viewers){
+	int idx = threadsIdx.x + blockDim.x*blockIdx.x;
+	if(idx >= totalSize){
+		return;
+	}
+	double cpyVal = data[idx];
+	int blkSize = 128
+	//dynamic parallism
+	int viewerId = idx/(timeSize);
+
+	copyNest<<<(copyTimes+blkSize-1)/blkSize, blkSize>>>(target, cpyVal, viewerId, copyTimes, timeSize, idx);
+	return;
+}
+__global__ void copyNest(double *target, double cpyVal, int viewerId, int copyTimes, int timeSize, int dIdx){
+	int idx = blockIdx.x*blockDim.x + threadsIdx.x;
+	if(idx >= copyTimes){
+		return;
+	}
+	//transform 3 dim
+	int copyIdx = viewerId*copyTimes*timeSize + idx*timeSize + dIdx;
+	target[copyIdx] = cpyVal;
+
+	return;
+}
+
 int main(int argc, char **argv) {
 	// Parameters in command line.
 	if (argc <= 2) {
@@ -63,14 +89,20 @@ int main(int argc, char **argv) {
 		cudaMemset(coef_g, 0, sizeof(double) * RANDOM_TIMES);
 
 		// Kernel - Amplitude Adjusted Fourier Transform (AAFT).
-		amplitudeAdjustedFourierTransform(aaft_g, data_g, viewers, RANDOM_TIMES, columns);
+		// prepare data 
+		double *d_aaft_data;
+		cudaMalloc(&d_aaft_data, columns * viewers*RANDOM_TIMES*sizeof(double));
+
+		copyData<<<ceil(columns * viewers, threads)>>>(d_aaft_data, data_g, RANDOM_TIMES, columns, viewers);
+		cudaFree(data_g);
+		
+		amplitudeAdjustedFourierTransform(aaft_g, d_aaft_data, viewers, RANDOM_TIMES, columns);
 
 		// Kernel - Correlation coefficient.
 		correlationCoefficient(coef_g, aaft_g, viewers, columns, RANDOM_TIMES);
 	}
 
 	// Release memory.
-	cudaFree(data_g);
 	cudaFree(aaft_g);
 	cudaFree(coef_g);
 
