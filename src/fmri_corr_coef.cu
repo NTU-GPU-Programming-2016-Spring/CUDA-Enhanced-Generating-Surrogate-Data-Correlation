@@ -248,41 +248,41 @@ void correlationCoefficient(double *d_isc_array, const double *d_aaft_matrix, co
   cudaFree(d_coef_matrix);
 }
 
-int main(int argc, char **argv)
-{
-  srand(time(NULL));
-  std::clock_t start;
-
-  const int subject_size = 8, time_size = 440, repeat_times = 10000;
-
-  double *h_data_matrix;
-  double *d_data_matrix, *d_isc_array;
-
-  h_data_matrix = (double *)malloc(sizeof(double) * repeat_times * time_size * subject_size);
-
-  start = std::clock();
-  for(int i = 0; i < repeat_times; i++)
-    for(int j = 0; j < time_size; j++)
-      for(int k = 0; k < subject_size; k++)
-        h_data_matrix[i * time_size * subject_size + j * subject_size + k] = rand();
-  printf("%% Generating data: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
-
-  cudaMalloc(&d_data_matrix, sizeof(double) * repeat_times * time_size * subject_size);
-  cudaMalloc(&d_isc_array, sizeof(double) * repeat_times);
-  cudaCheckErrors("cudaMalloc");
-
-  cudaMemcpy(d_data_matrix, h_data_matrix, sizeof(double) * repeat_times * subject_size * time_size, cudaMemcpyHostToDevice);
-  cudaCheckErrors("cudaMemcpy");
-
-  start = std::clock();
-  correlationCoefficient(d_isc_array, d_data_matrix, subject_size, time_size, repeat_times);
-  printf("%% correlationCoefficient: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
-
-  free(h_data_matrix);
-  cudaFree(d_data_matrix);
-  cudaFree(d_isc_array);
-  cudaCheckErrors("cudaFree");
-
-  return 0;
-}
+// int main(int argc, char **argv)
+// {
+//   srand(time(NULL));
+//   std::clock_t start;
+// 
+//   const int subject_size = 8, time_size = 440, repeat_times = 10000;
+// 
+//   double *h_data_matrix;
+//   double *d_data_matrix, *d_isc_array;
+// 
+//   h_data_matrix = (double *)malloc(sizeof(double) * repeat_times * time_size * subject_size);
+// 
+//   start = std::clock();
+//   for(int i = 0; i < repeat_times; i++)
+//     for(int j = 0; j < time_size; j++)
+//       for(int k = 0; k < subject_size; k++)
+//         h_data_matrix[i * time_size * subject_size + j * subject_size + k] = rand();
+//   printf("%% Generating data: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
+// 
+//   cudaMalloc(&d_data_matrix, sizeof(double) * repeat_times * time_size * subject_size);
+//   cudaMalloc(&d_isc_array, sizeof(double) * repeat_times);
+//   cudaCheckErrors("cudaMalloc");
+// 
+//   cudaMemcpy(d_data_matrix, h_data_matrix, sizeof(double) * repeat_times * subject_size * time_size, cudaMemcpyHostToDevice);
+//   cudaCheckErrors("cudaMemcpy");
+// 
+//   start = std::clock();
+//   correlationCoefficient(d_isc_array, d_data_matrix, subject_size, time_size, repeat_times);
+//   printf("%% correlationCoefficient: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
+// 
+//   free(h_data_matrix);
+//   cudaFree(d_data_matrix);
+//   cudaFree(d_isc_array);
+//   cudaCheckErrors("cudaFree");
+// 
+//   return 0;
+// }
 

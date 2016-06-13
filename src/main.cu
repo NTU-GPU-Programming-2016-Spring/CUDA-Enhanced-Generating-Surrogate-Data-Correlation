@@ -18,6 +18,18 @@ std::vector<double> loadBrainData(std::string path, int &rows, int &columns);
 std::vector<std::string> splitString(std::string str, char delimiter);
 
 // prepare data
+__global__ void copyNest(double *target, double cpyVal, int viewerId, int copyTimes, int timeSize, int dIdx){
+	int idx = blockIdx.x*blockDim.x + threadIdx.x;
+	if(idx >= copyTimes){
+		return;
+	}
+	//transform 3 dim
+	int copyIdx = viewerId*copyTimes*timeSize + idx*timeSize + dIdx;
+	target[copyIdx] = cpyVal;
+
+	return;
+}
+
 __global__ void copyData(double *target, double *data, int copyTimes, int timeSize, int viewers){
 	int idx = threadIdx.x + blockDim.x*blockIdx.x;
 	if(idx >= timeSize*viewers){
@@ -29,17 +41,6 @@ __global__ void copyData(double *target, double *data, int copyTimes, int timeSi
 	int viewerId = idx/(timeSize);
 	int dataIdx = idx%timeSize;
 	copyNest<<<(copyTimes+blkSize-1)/blkSize, blkSize>>>(target, cpyVal, viewerId, copyTimes, timeSize, dataIdx);
-	return;
-}
-__global__ void copyNest(double *target, double cpyVal, int viewerId, int copyTimes, int timeSize, int dIdx){
-	int idx = blockIdx.x*blockDim.x + threadIdx.x;
-	if(idx >= copyTimes){
-		return;
-	}
-	//transform 3 dim
-	int copyIdx = viewerId*copyTimes*timeSize + idx*timeSize + dIdx;
-	target[copyIdx] = cpyVal;
-
 	return;
 }
 

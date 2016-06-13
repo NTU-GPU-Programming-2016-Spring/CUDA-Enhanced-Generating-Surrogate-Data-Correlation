@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "Timer.h"
+// #include "Timer.h"
 
 #include <thrust/scan.h>
 #include <thrust/sort.h>
