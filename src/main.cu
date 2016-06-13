@@ -63,8 +63,7 @@ int main(int argc, char **argv) {
 		cudaMemset(coef_g, 0, sizeof(double) * RANDOM_TIMES);
 
 		// Kernel - Amplitude Adjusted Fourier Transform (AAFT).
-		blocks = ceil(columns * RANDOM_TIMES / threads);
-		amplitudeAdjustedFourierTransform(aaft_g, data_g, (i + 1), columns);
+		amplitudeAdjustedFourierTransform(aaft_g, data_g, viewers, RANDOM_TIMES, columns);
 
 		// Kernel - Correlation coefficient.
 		blocks = ceil(RANDOM_TIMES / threads);
