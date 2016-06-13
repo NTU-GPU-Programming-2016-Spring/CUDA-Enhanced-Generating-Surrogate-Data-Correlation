@@ -24,11 +24,11 @@ __global__ void copyData(double *target, double *data, int copyTimes, int timeSi
 		return;
 	}
 	double cpyVal = data[idx];
-	int blkSize = 128
+	int blkSize = 128;
 	//dynamic parallism
 	int viewerId = idx/(timeSize);
-
-	copyNest<<<(copyTimes+blkSize-1)/blkSize, blkSize>>>(target, cpyVal, viewerId, copyTimes, timeSize, idx);
+	int dataIdx = idx%timeSize;
+	copyNest<<<(copyTimes+blkSize-1)/blkSize, blkSize>>>(target, cpyVal, viewerId, copyTimes, timeSize, dataIdx);
 	return;
 }
 __global__ void copyNest(double *target, double cpyVal, int viewerId, int copyTimes, int timeSize, int dIdx){
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 
 		copyData<<<ceil(columns * viewers, threads)>>>(d_aaft_data, data_g, RANDOM_TIMES, columns, viewers);
 		cudaFree(data_g);
-		
+
 		amplitudeAdjustedFourierTransform(aaft_g, d_aaft_data, viewers, RANDOM_TIMES, columns);
 
 		// Kernel - Correlation coefficient.
