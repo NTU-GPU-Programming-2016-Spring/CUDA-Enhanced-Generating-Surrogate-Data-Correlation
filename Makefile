@@ -1,6 +1,7 @@
 CC=nvcc
-NVCCFLAGS=-arch=sm_50 -rdc=true
 CFLAGS=--std=c++11 -O2 -lcufft -lcurand
+NVCCFLAGS=-arch=sm_50 -rdc=true
+NVCCLDFLAGS=-arch=sm_50 -lcufft -lcurand
 
 SOURCE_DIR=src
 INCLUDE_DIR=src/headers
@@ -14,7 +15,7 @@ vpath %.cu $(SOURCE_DIR)
 all: main
 
 main: $(OBJECTS)
-	$(CC) $(NVCCFLAGS) $^ $(CFLAGS) -I $(INCLUDE_DIR) -o $@
+	$(CC) $(NVCCLDFLAGS) $^ -o $@
 
 $(BUILD_DIR)/%.o: %.cu | $(BUILD_DIR)
 	$(CC) $(NVCCFLAGS) -c $< $(CFLAGS) -I $(INCLUDE_DIR) -o $@
