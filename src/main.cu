@@ -19,8 +19,8 @@ std::vector<std::string> splitString(std::string str, char delimiter);
 
 // prepare data
 __global__ void copyData(double *target, double *data, int copyTimes, int timeSize, int viewers){
-	int idx = threadsIdx.x + blockDim.x*blockIdx.x;
-	if(idx >= totalSize){
+	int idx = threadIdx.x + blockDim.x*blockIdx.x;
+	if(idx >= timeSize*viewers){
 		return;
 	}
 	double cpyVal = data[idx];
@@ -32,7 +32,7 @@ __global__ void copyData(double *target, double *data, int copyTimes, int timeSi
 	return;
 }
 __global__ void copyNest(double *target, double cpyVal, int viewerId, int copyTimes, int timeSize, int dIdx){
-	int idx = blockIdx.x*blockDim.x + threadsIdx.x;
+	int idx = blockIdx.x*blockDim.x + threadIdx.x;
 	if(idx >= copyTimes){
 		return;
 	}
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
 		double *d_aaft_data;
 		cudaMalloc(&d_aaft_data, columns * viewers*RANDOM_TIMES*sizeof(double));
 
-		copyData<<<ceil(columns * viewers, threads)>>>(d_aaft_data, data_g, RANDOM_TIMES, columns, viewers);
+		copyData<<<(columns*viewers+threads-1)/threads, threads>>>(d_aaft_data, data_g, RANDOM_TIMES, columns, viewers);
 		cudaFree(data_g);
 
 		amplitudeAdjustedFourierTransform(aaft_g, d_aaft_data, viewers, RANDOM_TIMES, columns);
