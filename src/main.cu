@@ -66,8 +66,7 @@ int main(int argc, char **argv) {
 		amplitudeAdjustedFourierTransform(aaft_g, data_g, viewers, RANDOM_TIMES, columns);
 
 		// Kernel - Correlation coefficient.
-		blocks = ceil(RANDOM_TIMES / threads);
-		correlationCoefficient <<<blocks, threads>>> (coef_g, aaft_g, (i + 1), columns);
+		correlationCoefficient(coef_g, aaft_g, viewers, columns, RANDOM_TIMES);
 	}
 
 	// Release memory.
