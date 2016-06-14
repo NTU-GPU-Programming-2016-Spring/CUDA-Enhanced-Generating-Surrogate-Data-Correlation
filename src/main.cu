@@ -74,6 +74,21 @@ int main(int argc, char **argv) {
 
 		// Kernel - Correlation coefficient.
 		correlationCoefficient(coef_g, aaft_g, viewers, columns, RANDOM_TIMES);
+		
+		// Write into file.
+		std::stringstream ss, ssFilename;
+		std::ofstream outputFile;
+		ssFilename << argv[1] << "-pos-" << (i + 1) << ".csv";
+		outputFile.open(ssFilename.str());
+		
+		double *coef_cpu;
+		cudaMemcpy(coef_cpu, coef_g, sizeof(double) * RANDOM_TIMES, cudaMemcpyDeviceToHost);
+	
+		for (int i = 0; i < RANDOM_TIMES; i++)
+		    ss << arr[i] << ((i + 1) != RANDOM_TIMES ? "," : "\n");
+	
+		outputFile << ss.str();
+		outputFile.close();
 	}
 	fprintf(stderr, "Processing row ... %5s\r", "done");
 
