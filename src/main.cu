@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <helper_cuda.h>
+
 #include "time_series_aaft.h"
 #include "fmri_corr_coef.h"
 
@@ -20,22 +22,21 @@ std::vector<std::string> splitString(std::string str, char delimiter);
 
 int main(int argc, char **argv) {
 	// Parameters in command line.
-	if (argc <= 2) {
+	if (argc <= 3) {
 		std::cout << "Have to provide over 2 paths.\n\n";
 		return 0;
 	}
 	std::vector<std::string> csvPath;
-	for (int i = 1; i < argc; i++)
+	for (int i = 2; i < argc; i++)
 		csvPath.push_back(argv[i]);
 
 	// The matrix is expressed by 1D array.
-	std::vector< std::vector<double> > data (argc - 1);
+	std::vector< std::vector<double> > data (argc - 2);
 	int viewers = data.size();
 	double *dataArr;
 	// Amount of row and column.
 	int rows = 0, columns = 0;
 	// GPU variables.
-	int threads = 32, blocks;
 	double *data_g, *aaft_g, *coef_g;
 
 	// Release memory.
@@ -78,14 +79,14 @@ int main(int argc, char **argv) {
 		// Write into file.
 		std::stringstream ss, ssFilename;
 		std::ofstream outputFile;
-		ssFilename << argv[1] << "-pos-" << (i + 1) << ".csv";
+		ssFilename << "debug/" << argv[1] << "-pos-" << (i + 1) << ".csv";
 		outputFile.open(ssFilename.str());
 		
-		double *coef_cpu;
-		cudaMemcpy(coef_cpu, coef_g, sizeof(double) * RANDOM_TIMES, cudaMemcpyDeviceToHost);
+		double *coef_cpu = (double *)malloc(sizeof(double) * RANDOM_TIMES);
+		checkCudaErrors(cudaMemcpy(coef_cpu, coef_g, sizeof(double) * RANDOM_TIMES, cudaMemcpyDeviceToHost));
 	
 		for (int i = 0; i < RANDOM_TIMES; i++)
-		    ss << arr[i] << ((i + 1) != RANDOM_TIMES ? "," : "\n");
+		    ss << coef_cpu[i] << ((i + 1) != RANDOM_TIMES ? "," : "\n");
 	
 		outputFile << ss.str();
 		outputFile.close();
