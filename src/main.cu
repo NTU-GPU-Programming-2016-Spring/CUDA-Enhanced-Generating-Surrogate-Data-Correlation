@@ -57,17 +57,15 @@ int main(int argc, char **argv) {
 		// Concatenate the specific position (row) each viewer's data.
 		std::vector<double> subdata;
 		fprintf(stderr, "Processing row ... %5d\r", i);
-		for (int j = 0; j < viewers; j++)
-			subdata.insert(subdata.end(), data.at(j).begin() + i * columns, data.at(j).begin() + (i + 1) * columns);
 		for (int j = 0; j < viewers; j++) {
-                        std::vector<double> viewer_data(data.at(j).begin() + i * columns, data.at(j).begin() + (i + 1) * columns);
-                        viewer_data = repeatVector(viewer_data, RANDOM_TIMES);
+			std::vector<double> viewer_data(data.at(j).begin() + i * columns, data.at(j).begin() + (i + 1) * columns);
+			viewer_data = repeatVector(viewer_data, RANDOM_TIMES);
 			subdata.insert(subdata.end(), viewer_data.begin(), viewer_data.end());
-                }
+		}
 
 		// Convert the vector to array.
 		dataArr = &subdata[0];
-		cudaMemcpy(data_g, dataArr, sizeof(double) * columns * viewers, cudaMemcpyHostToDevice);
+		cudaMemcpy(data_g, dataArr, sizeof(double) * columns * viewers * RANDOM_TIMES, cudaMemcpyHostToDevice);
 		cudaMemset(aaft_g, 0, sizeof(double) * columns * viewers * RANDOM_TIMES);
 		cudaMemset(coef_g, 0, sizeof(double) * RANDOM_TIMES);
 
@@ -83,7 +81,6 @@ int main(int argc, char **argv) {
 	cudaFree(aaft_g);
 	cudaFree(coef_g);
 	cudaFree(data_g);
-	cudaFree(d_aaft_data);
 
 	// Message.
 	std::cout << "Data in CPU: " << " [rows: " << rows << ", columns: " << columns << "], total size: " << data.at(0).size() << ".\n\n";
@@ -130,18 +127,18 @@ std::vector<std::string> splitString(std::string str, char delimiter) {
 
 // copy a vector multiple times
 std::vector<double> repeatVector(std::vector<double> data, int times) {
-  std::vector<double> repeat(data.size() * times);
-  memcpy(&repeat[0], &data[0], sizeof(double) * data.size());
+	std::vector<double> repeat(data.size() * times);
+	memcpy(&repeat[0], &data[0], sizeof(double) * data.size());
 
-  size_t num_copied = data.size(),
-         num_total = repeat.size();
+	size_t num_copied = data.size(), num_total = repeat.size();
 
-  while (num_copied * 2 < num_total) {
-    memcpy(&repeat[num_copied], &repeat[0], sizeof(double) * num_copied);
-    num_copied *= 2;
-  }
-  memcpy(&repeat[num_copied], &repeat[0], sizeof(double) * (num_total - num_copied));
+	while (num_copied * 2 < num_total) {
+		memcpy(&repeat[num_copied], &repeat[0], sizeof(double) * num_copied);
+		num_copied *= 2;
+	}
 
-  return repeat;
+	memcpy(&repeat[num_copied], &repeat[0], sizeof(double) * (num_total - num_copied));
+
+	return repeat;
 }
 
