@@ -157,11 +157,8 @@ void phaseran(float *result, const int data_num, const int time_size){
 	cudaDeviceSynchronize();
 
 	//cufft
-	cufftHandle plan_r, plan;
+	cufftHandle plan;
 	
-	if (cufftPlan1d(&plan_r, time_size, CUFFT_R2C, data_num) != CUFFT_SUCCESS){
-		fprintf(stderr, "CUFFT error: Plan creation failed");
-	}
 	if (cufftPlan1d(&plan, time_size, CUFFT_C2C, data_num) != CUFFT_SUCCESS){
 		fprintf(stderr, "CUFFT error: Plan creation failed");
 	}
