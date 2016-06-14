@@ -13,36 +13,10 @@
 
 // Functions.
 std::vector<double> loadBrainData(std::string path, int &rows, int &columns);
+std::vector<double> repeatVector(std::vector<double> data, int times);
 
 // Sub functions.
 std::vector<std::string> splitString(std::string str, char delimiter);
-
-// prepare data
-__global__ void copyNest(double *target, double cpyVal, int viewerId, int copyTimes, int timeSize, int dIdx){
-	int idx = blockIdx.x*blockDim.x + threadIdx.x;
-	if(idx >= copyTimes){
-		return;
-	}
-	//transform 3 dim
-	int copyIdx = viewerId*copyTimes*timeSize + idx*timeSize + dIdx;
-	target[copyIdx] = cpyVal;
-
-	return;
-}
-
-__global__ void copyData(double *target, double *data, int copyTimes, int timeSize, int viewers){
-	int idx = threadIdx.x + blockDim.x*blockIdx.x;
-	if(idx >= timeSize*viewers){
-		return;
-	}
-	double cpyVal = data[idx];
-	int blkSize = 128;
-	//dynamic parallism
-	int viewerId = idx/(timeSize);
-	int dataIdx = idx%timeSize;
-	copyNest<<<(copyTimes+blkSize-1)/blkSize, blkSize>>>(target, cpyVal, viewerId, copyTimes, timeSize, dataIdx);
-	return;
-}
 
 int main(int argc, char **argv) {
 	// Parameters in command line.
@@ -62,7 +36,7 @@ int main(int argc, char **argv) {
 	int rows = 0, columns = 0;
 	// GPU variables.
 	int threads = 32, blocks;
-	double *data_g, *aaft_g, *coef_g, *d_aaft_data;
+	double *data_g, *aaft_g, *coef_g;
 
 	// Release memory.
 	cudaFree(0);
@@ -73,10 +47,9 @@ int main(int argc, char **argv) {
 		data.at(i) = loadBrainData(csvPath.at(i), rows, columns);
 	fprintf(stderr, "Loading CSV data ... done\n");
 
-	cudaMalloc(&data_g, sizeof(double) * columns * viewers);
+	cudaMalloc(&data_g, sizeof(double) * columns * viewers * RANDOM_TIMES);
 	cudaMalloc(&aaft_g, sizeof(double) * columns * viewers * RANDOM_TIMES);
 	cudaMalloc(&coef_g, sizeof(double) * RANDOM_TIMES);
-	cudaMalloc(&d_aaft_data, columns * viewers*RANDOM_TIMES*sizeof(double));
 
 	// Calculate the new time series each row by Amplitude Adjusted Fourier Transform (AAFT), then calculate correlation coefficient.
 	// Most of the case, rows are 10,242 times; columns are 450 times.
@@ -84,19 +57,20 @@ int main(int argc, char **argv) {
 		// Concatenate the specific position (row) each viewer's data.
 		std::vector<double> subdata;
 		fprintf(stderr, "Processing row ... %5d\r", i);
-		for (int j = 0; j < viewers; j++)
-			subdata.insert(subdata.end(), data.at(j).begin() + i * columns, data.at(j).begin() + (i + 1) * columns);
+		for (int j = 0; j < viewers; j++) {
+			std::vector<double> viewer_data(data.at(j).begin() + i * columns, data.at(j).begin() + (i + 1) * columns);
+			viewer_data = repeatVector(viewer_data, RANDOM_TIMES);
+			subdata.insert(subdata.end(), viewer_data.begin(), viewer_data.end());
+		}
 
 		// Convert the vector to array.
 		dataArr = &subdata[0];
-		cudaMemcpy(data_g, dataArr, sizeof(double) * columns * viewers, cudaMemcpyHostToDevice);
+		cudaMemcpy(data_g, dataArr, sizeof(double) * columns * viewers * RANDOM_TIMES, cudaMemcpyHostToDevice);
 		cudaMemset(aaft_g, 0, sizeof(double) * columns * viewers * RANDOM_TIMES);
 		cudaMemset(coef_g, 0, sizeof(double) * RANDOM_TIMES);
 
 		// Kernel - Amplitude Adjusted Fourier Transform (AAFT).
-		// prepare data 
-		copyData<<<(columns*viewers+threads-1)/threads, threads>>>(d_aaft_data, data_g, RANDOM_TIMES, columns, viewers);
-		amplitudeAdjustedFourierTransform(aaft_g, d_aaft_data, viewers, RANDOM_TIMES, columns);
+		amplitudeAdjustedFourierTransform(aaft_g, data_g, viewers, RANDOM_TIMES, columns);
 
 		// Kernel - Correlation coefficient.
 		correlationCoefficient(coef_g, aaft_g, viewers, columns, RANDOM_TIMES);
@@ -107,7 +81,6 @@ int main(int argc, char **argv) {
 	cudaFree(aaft_g);
 	cudaFree(coef_g);
 	cudaFree(data_g);
-	cudaFree(d_aaft_data);
 
 	// Message.
 	std::cout << "Data in CPU: " << " [rows: " << rows << ", columns: " << columns << "], total size: " << data.at(0).size() << ".\n\n";
@@ -151,3 +124,21 @@ std::vector<std::string> splitString(std::string str, char delimiter) {
 		result.push_back(token);
 	return result;
 }
+
+// copy a vector multiple times
+std::vector<double> repeatVector(std::vector<double> data, int times) {
+	std::vector<double> repeat(data.size() * times);
+	memcpy(&repeat[0], &data[0], sizeof(double) * data.size());
+
+	size_t num_copied = data.size(), num_total = repeat.size();
+
+	while (num_copied * 2 < num_total) {
+		memcpy(&repeat[num_copied], &repeat[0], sizeof(double) * num_copied);
+		num_copied *= 2;
+	}
+
+	memcpy(&repeat[num_copied], &repeat[0], sizeof(double) * (num_total - num_copied));
+
+	return repeat;
+}
+
