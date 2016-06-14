@@ -160,44 +160,37 @@ void printMatrix(const double *data, const int first, const int second, const in
   free(tmp);
 }
 
-void transposeMatrix(double *data_matrix, const double *source_matrix, const int subject_size, const int time_size, const int repeat_times)
-{
-  int total_works = repeat_times * subject_size * time_size;
-  int blocksize = 128;
-  int nblock = total_works/blocksize + (total_works%blocksize==0?0:1);
-
-  rearrangeMatrixPosition<<<nblock, blocksize>>>(data_matrix, source_matrix, subject_size, time_size, repeat_times);
-  cudaDeviceSynchronize();
-}
-
 void correlationCoefficient(double *d_isc_array, const double *d_aaft_matrix, const int subject_size, const int time_size, const int repeat_times)
 {
   // std::clock_t start;
 
-  const int matrix_works = subject_size * (subject_size - 1) / 2;
-  const int total_works = repeat_times * matrix_works;
+  const int blocksize = 128;
+  int total_works, nblock;
+
   double *d_data_matrix, *d_coef_matrix;
 
   cudaMalloc(&d_data_matrix, sizeof(double) * repeat_times * time_size * subject_size);
-  cudaMalloc(&d_coef_matrix, sizeof(double) * total_works);
+  cudaMalloc(&d_coef_matrix, sizeof(double) * repeat_times * subject_size * (subject_size - 1) / 2);
   cudaCheckErrors("cudaMalloc");
 
   // start = std::clock();
-  transposeMatrix(d_data_matrix, d_aaft_matrix, subject_size, time_size, repeat_times);
-  cudaCheckErrors("transposeMatrix");
+  total_works = repeat_times * subject_size * time_size;
+  nblock = total_works/blocksize + (total_works%blocksize==0?0:1);
+  rearrangeMatrixPosition<<<nblock, blocksize>>>(d_data_matrix, d_aaft_matrix, subject_size, time_size, repeat_times);
+  cudaDeviceSynchronize();
+  cudaCheckErrors("rearrangeMatrixPosition");
   // printf("%% transposeMatrix: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
 
-  int blocksize = 128;
-  int nblock = total_works/blocksize + (total_works%blocksize==0?0:1);
-
   // start = std::clock();
+  total_works = repeat_times * subject_size * (subject_size - 1) / 2;
+  nblock = total_works/blocksize + (total_works%blocksize==0?0:1);
   calculateCorrelationCoefficientMatrix<<<nblock, blocksize>>>(d_coef_matrix, d_data_matrix, subject_size, time_size, repeat_times);
   cudaDeviceSynchronize();
   cudaCheckErrors("calculateCorrelationCoefficientMatrix");
   // printf("%% calculateCorrelationCoefficientMatrix: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
 
-  nblock = repeat_times/blocksize + (repeat_times%blocksize==0?0:1);
   // start = std::clock();
+  nblock = repeat_times/blocksize + (repeat_times%blocksize==0?0:1);
   calculateInterSubjectCorrelation<<<nblock, blocksize>>>(d_isc_array, d_coef_matrix, subject_size, repeat_times);
   cudaDeviceSynchronize();
   cudaCheckErrors("calculateInterSubjectCorrelation");
@@ -235,6 +228,7 @@ void correlationCoefficient(double *d_isc_array, const double *d_aaft_matrix, co
   //   printf("exit;\n");
 
   //   printf("%% coef_matrix: ");
+  //   const int matrix_works = subject_size * (subject_size - 1) / 2;
   //   for (int i = 0; i < matrix_works; i++ )
   //       printf("%f ", h_coef_matrix[idx * matrix_works + i]);
   //   printf("\n");
