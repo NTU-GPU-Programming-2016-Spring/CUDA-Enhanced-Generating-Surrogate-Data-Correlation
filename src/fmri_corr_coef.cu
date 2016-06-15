@@ -74,7 +74,7 @@ __device__ double calFisherTransform(const double x, const int time_size)
   return 0.5 * log((1+x) / (1-x)) / rsqrt((double)time_size/2.34 - 3);
 }
 
-__device__ double calInverseFisherTransform(const double x, const int time_size)
+__device__ double calInverseFisherTransform(const double x)
 {
   // zm= (exp(2.*zm)-1)./(exp(2.*zm)+1);
   return (exp(2*x) - 1) / (exp(2*x) + 1);
