@@ -5,13 +5,14 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <ctime>
 
 #include <helper_cuda.h>
 
 #include "time_series_aaft.h"
 #include "fmri_corr_coef.h"
 
-#define RANDOM_TIMES 8000
+#define RANDOM_TIMES 3
 #define RANDOM_TIMES_UNIT 7000
 
 // Functions.
@@ -31,6 +32,7 @@ int main(int argc, char **argv) {
 	for (int i = 2; i < argc; i++)
 		csvPath.push_back(argv[i]);
 
+	std::clock_t start;
 	// The matrix is expressed by 1D array.
 	std::vector< std::vector<double> > data (argc - 2);
 	int viewers = data.size();
@@ -48,12 +50,14 @@ int main(int argc, char **argv) {
 	// Release memory.
 	cudaFree(0);
 
+	start = std::clock();
 	// Load CSV each viewer's data.
 	fprintf(stderr, "Loading CSV data ...\r");
 	for (int i = 0; i < viewers; i++)
 		data.at(i) = loadBrainData(csvPath.at(i), rows, columns);
-	fprintf(stderr, "Loading CSV data ... done\n");
+	fprintf(stderr, "Loading CSV data ... done with %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
 
+	start = std::clock();
 	cudaMalloc(&data_g, sizeof(double) * columns * viewers * RANDOM_TIMES_UNIT);
 	cudaMalloc(&aaft_g, sizeof(double) * columns * viewers * RANDOM_TIMES_UNIT);
 	cudaMalloc(&coef_g, sizeof(double) * RANDOM_TIMES);
@@ -97,13 +101,12 @@ int main(int argc, char **argv) {
 		// Write into file.
 		for (int i = 0; i < RANDOM_TIMES; i++)
 		    ss << coef_cpu[i] << ((i + 1) != RANDOM_TIMES ? "," : "\n");
-		break;
 	}
 	
 	outputFile << ss.str();
 	outputFile.close();
 	
-	fprintf(stderr, "Processing row ... %5s\n", "done");
+	fprintf(stderr, "Processing row ... %5s with %fs\n", "done", (std::clock() - start) / (double) CLOCKS_PER_SEC);
 
 	// Release memory.
 	cudaFree(aaft_g);
