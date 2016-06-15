@@ -11,14 +11,15 @@ for i=1:length(all_files)
 end
 fprintf('Reading %s ... done\n', char(all_files(i)));
 
+% Surrogate testing
 tic;
 surr_data = [];
-mean_value = [];
-p_value = [];
+% p_value = [];
 for v_idx=1:size(stc, 1)
   fprintf('Processing position ... %5d\r', v_idx);
   data = squeeze(stc(v_idx, :, :));
 
+  mean_value = [];
   for time=1:REPEAT_TIMES
     surr = reorderingData(data);
     corr_mean = calCorrCoefMean(surr);
@@ -26,9 +27,10 @@ for v_idx=1:size(stc, 1)
     mean_value(v_idx, time) = corr_mean;
   end
 
-  corr_mean = calCorrCoefMean(data);
-  p = length(find(mean_value(v_idx, :) > corr_mean)) / REPEAT_TIMES;
-  p_value(v_idx) = p;
+  % Calculate P-value
+  % corr_mean = calCorrCoefMean(data);
+  % p = length(find(mean_value(v_idx, :) > corr_mean)) / REPEAT_TIMES;
+  % p_value(v_idx) = p;
 end
 fprintf('Processing position ... %5s\n', 'done');
 toc
