@@ -14,7 +14,7 @@ vpath %.cu $(SOURCE_DIR)
 
 all: main
 
-main: $(OBJECTS)
+main: $(BUILD_DIR)/fmri_corr_coef.o
 	$(CC) $(NVCCLDFLAGS) $^ -o $@
 
 $(BUILD_DIR)/%.o: %.cu | $(BUILD_DIR)
@@ -24,7 +24,12 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
 run: main
-	./main AD1 $(wildcard ./lol_stc_csv_processed/*-AD1-lh.csv)
+	./main
+
+test: main
+	./main > /tmp/fmri_corr_coef.m
+	matlab -r "run('/tmp/fmri_corr_coef.m');"
+	grep "%" /tmp/fmri_corr_coef.m
 
 clean:
 	rm -rf $(BUILD_DIR) main
