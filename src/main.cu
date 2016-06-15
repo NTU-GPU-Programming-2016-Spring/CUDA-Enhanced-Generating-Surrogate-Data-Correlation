@@ -11,7 +11,8 @@
 #include "time_series_aaft.h"
 #include "fmri_corr_coef.h"
 
-#define RANDOM_TIMES 10
+#define RANDOM_TIMES 8000
+#define RANDOM_TIMES_UNIT 7000
 
 // Functions.
 std::vector<double> loadBrainData(std::string path, int &rows, int &columns);
@@ -53,46 +54,56 @@ int main(int argc, char **argv) {
 		data.at(i) = loadBrainData(csvPath.at(i), rows, columns);
 	fprintf(stderr, "Loading CSV data ... done\n");
 
-	cudaMalloc(&data_g, sizeof(double) * columns * viewers * RANDOM_TIMES);
-	cudaMalloc(&aaft_g, sizeof(double) * columns * viewers * RANDOM_TIMES);
+	cudaMalloc(&data_g, sizeof(double) * columns * viewers * RANDOM_TIMES_UNIT);
+	cudaMalloc(&aaft_g, sizeof(double) * columns * viewers * RANDOM_TIMES_UNIT);
 	cudaMalloc(&coef_g, sizeof(double) * RANDOM_TIMES);
 
 	// Calculate the new time series each row by Amplitude Adjusted Fourier Transform (AAFT), then calculate correlation coefficient.
 	// Most of the case, rows are 10,242 times; columns are 450 times.
 	for (int i = 0; i < rows; i++) {
-		// Concatenate the specific position (row) each viewer's data.
-		std::vector<double> subdata;
+		int executed_times = 0;
+
 		fprintf(stderr, "Processing row ... %5d\r", i);
-		for (int j = 0; j < viewers; j++) {
-			std::vector<double> viewer_data(data.at(j).begin() + i * columns, data.at(j).begin() + (i + 1) * columns);
-			viewer_data = repeatVector(viewer_data, RANDOM_TIMES);
-			subdata.insert(subdata.end(), viewer_data.begin(), viewer_data.end());
+		while (executed_times < RANDOM_TIMES) {
+			const int remain_times = RANDOM_TIMES - executed_times;
+			const int random_times = remain_times >= RANDOM_TIMES_UNIT ? RANDOM_TIMES_UNIT : remain_times;
+
+			// Concatenate the specific position (row) each viewer's data.
+			std::vector<double> subdata;
+			for (int j = 0; j < viewers; j++) {
+				std::vector<double> viewer_data(data.at(j).begin() + i * columns, data.at(j).begin() + (i + 1) * columns);
+				viewer_data = repeatVector(viewer_data, random_times);
+				subdata.insert(subdata.end(), viewer_data.begin(), viewer_data.end());
+			}
+
+			// Convert the vector to array.
+			dataArr = &subdata[0];
+			cudaMemcpy(data_g, dataArr, sizeof(double) * columns * viewers * random_times, cudaMemcpyHostToDevice);
+			cudaMemset(aaft_g, 0, sizeof(double) * columns * viewers * random_times);
+			cudaMemset(coef_g + executed_times, 0, sizeof(double) * random_times);
+
+			// Kernel - Amplitude Adjusted Fourier Transform (AAFT).
+			amplitudeAdjustedFourierTransform(aaft_g, data_g, viewers, random_times, columns);
+
+			// Kernel - Correlation coefficient.
+			correlationCoefficient(coef_g + executed_times, aaft_g, viewers, columns, random_times);
+
+			executed_times += random_times;
 		}
 
-		// Convert the vector to array.
-		dataArr = &subdata[0];
-		cudaMemcpy(data_g, dataArr, sizeof(double) * columns * viewers * RANDOM_TIMES, cudaMemcpyHostToDevice);
-		cudaMemset(aaft_g, 0, sizeof(double) * columns * viewers * RANDOM_TIMES);
-		cudaMemset(coef_g, 0, sizeof(double) * RANDOM_TIMES);
-
-		// Kernel - Amplitude Adjusted Fourier Transform (AAFT).
-		amplitudeAdjustedFourierTransform(aaft_g, data_g, viewers, RANDOM_TIMES, columns);
-
-		// Kernel - Correlation coefficient.
-		correlationCoefficient(coef_g, aaft_g, viewers, columns, RANDOM_TIMES);
-		
 		double *coef_cpu = (double *)malloc(sizeof(double) * RANDOM_TIMES);
 		checkCudaErrors(cudaMemcpy(coef_cpu, coef_g, sizeof(double) * RANDOM_TIMES, cudaMemcpyDeviceToHost));
 	
 		// Write into file.
 		for (int i = 0; i < RANDOM_TIMES; i++)
 		    ss << coef_cpu[i] << ((i + 1) != RANDOM_TIMES ? "," : "\n");
+		break;
 	}
 	
 	outputFile << ss.str();
 	outputFile.close();
 	
-	fprintf(stderr, "Processing row ... %5s\r", "done");
+	fprintf(stderr, "Processing row ... %5s\n", "done");
 
 	// Release memory.
 	cudaFree(aaft_g);
