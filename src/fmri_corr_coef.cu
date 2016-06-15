@@ -65,6 +65,18 @@ __device__ double calCorrCoef(const double *x, const double *y, const int length
   return (xy_sum - length * x_avg * y_avg) / ((length - 1) * x_std * y_std);
 }
 
+__device__ double calFisherTransform(const double x, const int time_size)
+{
+  // z=0.5.*log((1+rr)./(1-rr))./(1/sqrt(size(data,1)/2.34-3));
+  return 0.5 * log((1+x) / (1-x)) / rsqrt((double)time_size/2.34 - 3);
+}
+
+__device__ double calInverseFisherTransform(const double x)
+{
+  // zm= (exp(2.*zm)-1)./(exp(2.*zm)+1);
+  return (exp(2*x) - 1) / (exp(2*x) + 1);
+}
+
 __global__ void calculateCorrelationCoefficientMatrix(double *all_corr_coef_matrix, const double *all_data_matrix, const int subject_size, const int time_size, const int repeat_times)
 {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -91,8 +103,9 @@ __global__ void calculateCorrelationCoefficientMatrix(double *all_corr_coef_matr
   const double *data_x = data_matrix + x * time_size;
   const double *data_y = data_matrix + y * time_size;
   const double coef = calCorrCoef(data_x, data_y, time_size);
+  const double zvalue = calFisherTransform(coef, time_size);
 
-  all_corr_coef_matrix[idx] = coef;
+  all_corr_coef_matrix[idx] = zvalue;
 }
 
 
@@ -110,28 +123,29 @@ __global__ void calculateInterSubjectCorrelation(double *isc_array, const double
   for (int i = 0; i < matrix_works; i++)
     sum += corr_coef_matrix[i];
 
-  isc_array[idx] = sum / matrix_works;
+  const double zmean = sum / matrix_works;
+  isc_array[idx] = calInverseFisherTransform(zmean);
 }
 
-// void printMatrix(const double *data, const int first, const int second, const int third)
-// {
-//   double *tmp = (double *)malloc(sizeof(double) * first * second * third);
-//   cudaMemcpy(tmp, data, sizeof(double) * first * second * third, cudaMemcpyDeviceToHost);
-// 
-//   printf("%% 1st:%d 2nd:%d 3rd:%d\n", first, second, third);
-//   for (int i = 0; i < first; i++ ) {
-//     for (int j = 0; j < second; j++ ) {
-//       printf("%% ");
-//       for (int k = 0; k < third; k++ ) {
-//         printf("%f ", tmp[i*second*third + j*third + k]);
-//       }
-//       printf("\n");
-//     }
-//     printf("%%\n");
-//   }
-// 
-//   free(tmp);
-// }
+void printMatrix(const double *data, const int first, const int second, const int third)
+{
+  double *tmp = (double *)malloc(sizeof(double) * first * second * third);
+  cudaMemcpy(tmp, data, sizeof(double) * first * second * third, cudaMemcpyDeviceToHost);
+
+  printf("%% 1st:%d 2nd:%d 3rd:%d\n", first, second, third);
+  for (int i = 0; i < first; i++ ) {
+    for (int j = 0; j < second; j++ ) {
+      printf("%% ");
+      for (int k = 0; k < third; k++ ) {
+        printf("%f ", tmp[i*second*third + j*third + k]);
+      }
+      printf("\n");
+    }
+    printf("%%\n");
+  }
+
+  free(tmp);
+}
 
 void correlationCoefficient(double *d_isc_array, const double *d_aaft_matrix, const int subject_size, const int time_size, const int repeat_times)
 {
@@ -180,10 +194,13 @@ void correlationCoefficient(double *d_isc_array, const double *d_aaft_matrix, co
   //     }
   //     printf(";");
   //   }
+
   //   printf("];\n");
   //   printf("tmp=tril(corrcoef(data),-1);\n");
   //   printf("rr=tmp(find(tmp));\n");
-  //   printf("zm=mean(rr)\n");
+  //   printf("z=0.5.*log((1+rr)./(1-rr))./(1/sqrt(size(data,1)/2.34-3));\n");
+  //   printf("zm=mean(z);\n");
+  //   printf("corr_mean=(exp(2.*zm)-1)./(exp(2.*zm)+1)\n");
   //   printf("exit;\n");
 
   //   printf("%% --------------------\n");
