@@ -17,55 +17,62 @@
     } \
   } while (0)
 
-__device__ double calSum(const double *x, const int length, const int step)
+__device__ double calSum(const double *x, const int length, const size_t pitch)
 {
   double sum = 0;
-  for(int i = 0; i < length; i++)
-    sum += x[i*step];
+  for(int i = 0; i < length; i++) {
+    sum += *x;
+    x = (const double *)((char *)x + pitch);
+  }
   return sum;
 }
 
-__device__ double calAvg(const double *x, const int length, const int step)
+__device__ double calAvg(const double *x, const int length, const size_t pitch)
 {
-  return calSum(x, length, step) / length;
+  return calSum(x, length, pitch) / length;
 }
 
-__device__ double calSquareSum(const double *x, const int length, const int step)
+__device__ double calSquareSum(const double *x, const int length, const size_t pitch)
 {
   double sum = 0;
-  for(int i = 0; i < length; i++)
-    sum += x[i*step] * x[i*step];
+  for(int i = 0; i < length; i++) {
+    sum += (*x) * (*x);
+    x = (const double *)((char *)x + pitch);
+  }
   return sum;
 }
 
-__device__ double calMultiplySum(const double *x, const double *y, const int length, const int step)
+__device__ double calMultiplySum(const double *x, const double *y, const int length, const size_t pitch)
 {
   double sum = 0;
-  for(int i = 0; i < length; i++)
-    sum += x[i*step] * y[i*step];
+  for(int i = 0; i < length; i++) {
+    sum += (*x) * (*y);
+    x = (const double *)((char *)x + pitch);
+    y = (const double *)((char *)y + pitch);
+  }
   return sum;
 }
 
-__device__ double calStd(const double *x, const int length, const int step)
+__device__ double calStd(const double *x, const int length, const int pitch)
 {
-  const double x_square_sum = calSquareSum(x, length, step);
-  const double x_avg = calAvg(x, length, step);
+  const double x_square_sum = calSquareSum(x, length, pitch);
+  const double x_avg = calAvg(x, length, pitch);
 
   return sqrt((x_square_sum - length * x_avg * x_avg) / (length - 1));
 }
 
-__device__ double calCorrCoef(const double *x, const double *y, const int length, const int step)
+__device__ double calCorrCoef(const double *x, const double *y, const int length, const size_t pitch)
 {
-  const double xy_sum = calMultiplySum(x, y, length, step);
-  const double x_avg = calAvg(x, length, step);
-  const double y_avg = calAvg(y, length, step);
-  const double x_std = calStd(x, length, step);
-  const double y_std = calStd(y, length, step);
+  const double xy_sum = calMultiplySum(x, y, length, pitch);
+  const double x_avg = calAvg(x, length, pitch);
+  const double y_avg = calAvg(y, length, pitch);
+  const double x_std = calStd(x, length, pitch);
+  const double y_std = calStd(y, length, pitch);
 
   return (xy_sum - length * x_avg * y_avg) / ((length - 1) * x_std * y_std);
 }
 
-__global__ void calculateCorrelationCoefficientMatrix(double *all_corr_coef_matrix, const double *all_data_matrix, const int subject_size, const int time_size, const int repeat_times)
+__global__ void calculateCorrelationCoefficientMatrix(double *all_corr_coef_matrix, const double *all_data_matrix, const int subject_size, const int time_size, const int repeat_times, const size_t pitch)
 {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   const int matrix_works = subject_size * (subject_size - 1) / 2;
@@ -87,8 +94,8 @@ __global__ void calculateCorrelationCoefficientMatrix(double *all_corr_coef_matr
     remain_works -= row_works;
   }
 
-  const double *data_matrix = all_data_matrix + n_matrix * time_size * subject_size;
-  const double coef = calCorrCoef(data_matrix + x, data_matrix + y, time_size, subject_size);
+  const double *data_matrix = (const double *)((char *)all_data_matrix + n_matrix * time_size * pitch);
+  const double coef = calCorrCoef(data_matrix + x, data_matrix + y, time_size, pitch);
 
   all_corr_coef_matrix[idx] = coef;
 }
@@ -136,29 +143,42 @@ void correlationCoefficient(double *d_isc_array, const double *d_aaft_matrix, co
   // std::clock_t start;
 
   const int blocksize = 128;
+  const int repeat_units = 4096;
   int total_works, nblock;
 
-  double *d_coef_matrix;
+  double *d_coef_matrix, *d_data_matrix;
+  size_t pitch;
+  int executed_times = 0;
 
   cudaMalloc(&d_coef_matrix, sizeof(double) * repeat_times * subject_size * (subject_size - 1) / 2);
-  cudaCheckErrors("cudaMalloc");
+  cudaMallocPitch(&d_data_matrix, &pitch, sizeof(double) * subject_size, time_size * repeat_units);
+  cudaCheckErrors("cudaMalloc & cudaMallocPitch");
 
-  // start = std::clock();
-  total_works = repeat_times * subject_size * (subject_size - 1) / 2;
-  nblock = total_works/blocksize + (total_works%blocksize==0?0:1);
-  calculateCorrelationCoefficientMatrix<<<nblock, blocksize>>>(d_coef_matrix, d_aaft_matrix, subject_size, time_size, repeat_times);
-  cudaDeviceSynchronize();
-  cudaCheckErrors("calculateCorrelationCoefficientMatrix");
-  // printf("%% calculateCorrelationCoefficientMatrix: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
+  while (executed_times < repeat_times) {
+    const int remain_times = repeat_times - executed_times;
+    const int current_times = remain_times > repeat_units ? repeat_units : remain_times;
+    cudaMemcpy2D(d_data_matrix, pitch, d_aaft_matrix + executed_times * time_size * subject_size, sizeof(double) * subject_size, sizeof(double) * subject_size, time_size * current_times, cudaMemcpyDeviceToDevice);
 
-  // start = std::clock();
-  nblock = repeat_times/blocksize + (repeat_times%blocksize==0?0:1);
-  calculateInterSubjectCorrelation<<<nblock, blocksize>>>(d_isc_array, d_coef_matrix, subject_size, repeat_times);
-  cudaDeviceSynchronize();
-  cudaCheckErrors("calculateInterSubjectCorrelation");
-  // printf("%% calculateInterSubjectCorrelation: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
+    // start = std::clock();
+    total_works = current_times * subject_size * (subject_size - 1) / 2;
+    nblock = total_works/blocksize + (total_works%blocksize==0?0:1);
+    calculateCorrelationCoefficientMatrix<<<nblock, blocksize>>>(d_coef_matrix, d_data_matrix, subject_size, time_size, current_times, pitch);
+    cudaDeviceSynchronize();
+    cudaCheckErrors("calculateCorrelationCoefficientMatrix");
+    // printf("%% calculateCorrelationCoefficientMatrix: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
+
+    // start = std::clock();
+    nblock = current_times/blocksize + (current_times%blocksize==0?0:1);
+    calculateInterSubjectCorrelation<<<nblock, blocksize>>>(d_isc_array + executed_times * subject_size * (subject_size - 1) / 2, d_coef_matrix, subject_size, current_times);
+    cudaDeviceSynchronize();
+    cudaCheckErrors("calculateInterSubjectCorrelation");
+    // printf("%% calculateInterSubjectCorrelation: %fs\n", (std::clock() - start) / (double) CLOCKS_PER_SEC);
+
+    executed_times += current_times;
+  }
 
   // {
+  //   printf("%% %d %d %d\n", pitch, sizeof(double), subject_size);
   //   printMatrix(d_aaft_matrix, repeat_times, time_size, subject_size);
 
   //   double *h_data_matrix, *h_isc_array;
@@ -192,6 +212,7 @@ void correlationCoefficient(double *d_isc_array, const double *d_aaft_matrix, co
   // }
 
   cudaFree(d_coef_matrix);
+  cudaFree(d_data_matrix);
 }
 
 int main(int argc, char **argv)
