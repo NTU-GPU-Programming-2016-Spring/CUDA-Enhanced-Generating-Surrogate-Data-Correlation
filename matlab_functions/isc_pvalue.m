@@ -42,7 +42,9 @@ end
 function corr_mean = calCorrCoefMean(matrix)
 tmp = tril(corrcoef(matrix), -1);
 rr=tmp(find(tmp));
-corr_mean=mean(rr);
+z=0.5.*log((1+rr)./(1-rr))./(1/sqrt(size(matrix,1)/2.34-3));
+zm=mean(rr);
+corr_mean= (exp(2.*zm)-1)./(exp(2.*zm)+1);
 end
 
 function surr = reorderingData(data)
