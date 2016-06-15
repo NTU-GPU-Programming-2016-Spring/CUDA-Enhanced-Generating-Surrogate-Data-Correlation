@@ -1,6 +1,6 @@
 function [stc, surr_data, mean_value, p_value] = isc_pvalue(input_dir)
 
-REPEAT_TIMES = 100;
+REPEAT_TIMES = 200;
 stc = [];
 
 % Reading data
@@ -15,11 +15,11 @@ fprintf('Reading %s ... done\n', char(all_files(i)));
 tic;
 surr_data = [];
 % p_value = [];
+mean_value = [];
 for v_idx=1:size(stc, 1)
   fprintf('Processing position ... %5d\r', v_idx);
   data = squeeze(stc(v_idx, :, :));
 
-  mean_value = [];
   for time=1:REPEAT_TIMES
     surr = reorderingData(data);
     corr_mean = calCorrCoefMean(surr);
@@ -34,6 +34,8 @@ for v_idx=1:size(stc, 1)
 end
 fprintf('Processing position ... %5s\n', 'done');
 toc
+
+dlmwrite('./AD1-pos.csv', mean_value, 'precision', 10);
 
 end
 
