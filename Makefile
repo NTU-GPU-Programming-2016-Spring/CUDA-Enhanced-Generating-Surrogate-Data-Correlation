@@ -24,9 +24,9 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
 run: main
-	./main AD1 $(wildcard ./lol_stc_csv_processed/*-AD1-lh.csv)
+	./main AD1-lh $(wildcard ./lol_stc_csv_processed/*-AD1-lh.csv)
 
 clean:
-	rm -rf $(BUILD_DIR) main
+	rm -rf $(BUILD_DIR)/*.o main
 
 
