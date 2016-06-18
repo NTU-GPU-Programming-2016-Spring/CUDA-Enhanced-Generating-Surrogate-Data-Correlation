@@ -1,20 +1,24 @@
-function [stc, surr_data, mean_value, p_value] = isc_pvalue(input_dir)
+function [stc, surr_data, mean_value, p_value] = isc_pvalue(input_dir, substr)
 
 REPEAT_TIMES = 50;
 stc = [];
 
-% Reading data
+% Reading data from files with substr in filename under input_dir
 all_files = getAllFiles(input_dir);
-for i=1:length(all_files)
-  fprintf('Reading %s ...\r', char(all_files(i)));
-  stc(:, :, i) = dlmread(char(all_files(i)));
+pattern = strcat('^.*', substr, '.*$');
+match_files = regexp(all_files, pattern, 'match');
+match_files = [match_files{:}];
+
+for i=1:length(match_files)
+  fprintf('Reading %s ...\r', char(match_files(i)));
+  stc(:, :, i) = dlmread(char(match_files(i)));
 end
-fprintf('Reading %s ... done\n', char(all_files(i)));
+fprintf('Reading %s ... done\n', char(match_files(i)));
 
 % Surrogate testing
 tic;
 surr_data = [];
-% p_value = [];
+p_value = [];
 mean_value = [];
 for v_idx=1:size(stc, 1)
   fprintf('Processing position ... %5d\r', v_idx);
@@ -28,14 +32,14 @@ for v_idx=1:size(stc, 1)
   end
 
   % Calculate P-value
-  % corr_mean = calCorrCoefMean(data);
-  % p = length(find(mean_value(v_idx, :) > corr_mean)) / REPEAT_TIMES;
-  % p_value(v_idx) = p;
+  corr_mean = calCorrCoefMean(data);
+  p = length(find(mean_value(v_idx, :) > corr_mean)) / REPEAT_TIMES;
+  p_value(v_idx) = p;
 end
 fprintf('Processing position ... %5s\n', 'done');
 toc
 
-dlmwrite('./AD1-pos.csv', mean_value, 'precision', 10);
+% dlmwrite('./AD1-pos.csv', mean_value, 'precision', 10);
 
 end
 

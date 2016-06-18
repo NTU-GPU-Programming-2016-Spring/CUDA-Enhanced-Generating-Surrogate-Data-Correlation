@@ -12,8 +12,8 @@
 #include "time_series_aaft.h"
 #include "fmri_corr_coef.h"
 
-#define RANDOM_TIMES 3
-#define RANDOM_TIMES_UNIT 7000
+#define RANDOM_TIMES 2000
+#define RANDOM_TIMES_UNIT 4096
 
 // Functions.
 std::vector<double> loadBrainData(std::string path, int &rows, int &columns);
