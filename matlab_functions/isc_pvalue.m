@@ -1,6 +1,6 @@
 function [stc, surr_data, mean_value, p_value] = isc_pvalue(input_dir)
 
-REPEAT_TIMES = 200;
+REPEAT_TIMES = 50;
 stc = [];
 
 % Reading data
@@ -42,7 +42,7 @@ end
 function corr_mean = calCorrCoefMean(matrix)
 tmp = tril(corrcoef(matrix), -1);
 rr=tmp(find(tmp));
-z=0.5.*log((1+rr)./(1-rr))./(1/sqrt(size(matrix,1)/2.34-3));
+z=0.5.*log((1+rr)./(1-rr));
 zm=mean(rr);
 corr_mean= (exp(2.*zm)-1)./(exp(2.*zm)+1);
 end

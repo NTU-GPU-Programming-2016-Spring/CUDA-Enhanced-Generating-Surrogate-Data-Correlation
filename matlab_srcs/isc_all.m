@@ -175,7 +175,7 @@ for stc_idx=1:length(stc_folder_all)
         fprintf('\n');
         
         %remove the first 10 time points
-        stc=stc(:,11:end,:);
+        stc=stc(:,6:445,:);
         
         %remove global mean
         for s_idx=1:size(stc,3)

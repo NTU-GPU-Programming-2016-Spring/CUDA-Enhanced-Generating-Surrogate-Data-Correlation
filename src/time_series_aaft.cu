@@ -357,20 +357,6 @@ void sortByRank(DataType *data, int *rank, const int viewers, const int randomNu
 
 	thrust::stable_sort_by_key(int2_rank_vec.begin(), int2_rank_vec.end(), d_data_vec.begin(), sort_2d_rank());
 
-	// test for correctness
-	// thrust::host_vector<DataType> h_data_vec=d_data_vec;
-	// thrust::device_ptr<DataType> odata_ptr = thrust::device_pointer_cast(data);;
-	// thrust::device_vector<DataType> od_data_vec(odata_ptr, odata_ptr+total_size);
-	// thrust::host_vector<DataType> oh_data_vec = od_data_vec;
-	// thrust::host_vector<int> h_rank = rank_vec;
-
-	// for(int i = 0 ; i< 2*timePoints; i++){
-	// 	if(i%timePoints==0){
-	// 		printf("-------\n");
-	// 	}
-	// 	printf("ori: %1f rank: %d sort: %1f \n", oh_data_vec[i], h_rank[i], h_data_vec[i]);
-	// }
-
 	checkCudaErrors(cudaMemcpy(data, d_data_vec.data().get(), sizeof(DataType)*total_size, cudaMemcpyDeviceToDevice));
 
 	return;
@@ -426,35 +412,3 @@ void amplitudeAdjustedFourierTransform(double *d_aaft, double *d_data, const int
 	checkCudaErrors(cudaFree(d_rank));
 	return;
 }
-
-// int main(int argc, char **argv)
-// {	
-// 	//phaseran(result, SIGDIM, SIGSIZE);
-// 	int viewers = 5;
-// 	double *result = (double *)malloc(sizeof(double)*SIGSIZE*SIGDIM*viewers);	
-// 	Timer phaseran_timer;
-// 	phaseran_timer.Start();
-// 	for(int i = 0; i <1 ; i++){
-
-// 		for(int i = 0; i<viewers*SIGSIZE*SIGDIM;i++){			
-// 			result[i] = (double) rand()/RAND_MAX;
-// 		}
-// 		double *d_result;
-// 		cudaMalloc(&d_result, sizeof(double)*viewers*SIGSIZE*SIGDIM);
-// 		cudaMemcpy(d_result, result, sizeof(double)*viewers*SIGSIZE*SIGDIM, cudaMemcpyHostToDevice);
-		
-// 		double *db_result;
-// 		cudaMalloc(&db_result, sizeof(double)*viewers*SIGSIZE*SIGDIM);
-
-// 		amplitudeAdjustedFourierTransform(db_result, d_result, viewers, SIGDIM, SIGSIZE);
-// 		cudaMemcpy(result, d_result, sizeof(double)*viewers*SIGSIZE*SIGDIM, cudaMemcpyDeviceToHost);
-		
-// 		cudaFree(d_result);
-// 		cudaFree(db_result);
-		
-// 	}
-// 	phaseran_timer.Pause();
-// 	printf_timer(phaseran_timer);
-// 	free(result);
-// 	return 0;
-// }	

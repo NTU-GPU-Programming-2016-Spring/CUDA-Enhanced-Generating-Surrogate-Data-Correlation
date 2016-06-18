@@ -71,7 +71,7 @@ __device__ double calCorrCoef(const double *x, const double *y, const int length
 __device__ double calFisherTransform(const double x, const int time_size)
 {
   // z=0.5.*log((1+rr)./(1-rr))./(1/sqrt(size(data,1)/2.34-3));
-  return 0.5 * log((1+x) / (1-x)) / rsqrt((double)time_size/2.34 - 3);
+  return 0.5 * log((1+x) / (1-x));
 }
 
 __device__ double calInverseFisherTransform(const double x)

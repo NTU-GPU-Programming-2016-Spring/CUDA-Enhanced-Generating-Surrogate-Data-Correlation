@@ -3,7 +3,7 @@
 
 close all; clear all;
 %------ set save path and read path ------
-pic_folder='result_pics';
+pic_folder='result_pics/cuda';
 cor_folder_name = 'stcs';
 
 %------ end ------
@@ -46,8 +46,8 @@ for role_idx=1:1
 		file_dest = sprintf('./%s/%s', folder_name, file_name);
 		dest = csvread(file_dest);
 		surr_size = size(dest, 2);
-		p_val = sum(dest >= m_cor(brain_idx))/surr_size;
-		md_p_val = sum(dest >= md_cor(brain_idx))/surr_size;
+		p_val = sum(find(dest >= m_cor(brain_idx)))/surr_size;
+		md_p_val = sum(find(dest >= md_cor(brain_idx)))/surr_size;
 
 		if brain_idx <= 10242
 			lh_p_val_series = [lh_p_val_series;p_val];
