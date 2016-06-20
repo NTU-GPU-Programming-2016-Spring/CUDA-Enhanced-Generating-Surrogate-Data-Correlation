@@ -1,0 +1,166 @@
+doctype html
+html
+	head
+		title Brain fMRI CC
+		// Default.
+		link(rel='stylesheet' type='text/css' href='/lib/default/default.css')
+		// jQeury
+		script(src='/lib/jquery/jquery-3.0.0.min.js')
+		// Semantic-UI.
+		link(rel='stylesheet' type='text/css' href='/lib/semantic-ui/semantic.min.css')
+		link(rel='stylesheet' type='text/css' href='/lib/semantic-ui/plugin-range.css')
+		script(src='/lib/semantic-ui/semantic.min.js')
+		script(src='/lib/semantic-ui/plugin-range.js')
+		// D3.js
+		script(src='http://d3js.org/d3.v4.0.0-alpha.45.min.js')
+
+	body
+		div.background-image
+		div.ui.container
+			div.main-container
+				div.ui.segment
+					h1.ui.header
+						| Title here
+					h3.ui.header
+						i.file.text.outline.icon
+						div.content
+							| Abstract
+					div.ui.basic.segment
+						| Content here
+					h3.ui.header
+						i.trophy.icon
+						div.content
+							| Purpose of the project
+					div.ui.basic.segment
+						| Content here
+			div.main-container
+				div.ui.segment
+					h3.ui.header
+						i.file.video.outline.icon
+						div.content
+							| Project proposal video
+					div.video
+						iframe(width="560" height="315" src="https://www.youtube.com/embed/l_ooxUZxDfA" frameborder="0" allowfullscreen)
+					h3.ui.header
+						i.file.video.outline.icon
+						div.content
+							| Final video
+					div.video
+
+			div.main-container
+				div.ui.segment
+					form#search.ui.form
+						div.field
+							div.ui.equal.width.stackable.grid
+								div.column
+									div.blue.team
+										div.ui.tertiary.inverted.blue.segment
+											div.ui.equal.width.grid
+												each hero in [{'name': 'KogMaw', 'view': 'AD1'}, {'name': 'Braum', 'view': 'SUP1'}]
+													div.hero.center.aligned.column
+														img.ui.centered.image(src='/img/' + hero.name + '.png')
+														label.ui.blue.basic.label
+															| #{hero.name} (#{hero.view})
+								div.column
+									div.red.team
+										div.ui.tertiary.inverted.red.segment
+											div.ui.equal.width.grid
+												each hero in [{'name': 'Kalista', 'view': 'AD2'}, {'name': 'Thresh', 'view': 'SUP2'}]
+													div.hero.center.aligned.column
+														img.ui.centered.image(src='/img/' + hero.name + '.png')
+														label.ui.red.basic.label
+															| #{hero.name} (#{hero.view})
+						div.two.fields
+							div.field
+								h3.ui.header
+									i.user.icon
+									div.content
+										| Select the view of character
+								select.ui.dropdown(name='view')
+									option(value='AD1')
+										| AD1
+									option(value='SUP1')
+										| SUP1
+									option(value='AD2')
+										| AD2
+									option(value='SUP2')
+										| SUP2
+							div.field
+								h3.ui.header
+									i.retweet.icon
+									div.content
+										| Brain
+								select.ui.dropdown(name='brain')
+									option(value='left')
+										| Left brain
+									option(value='right')
+										| Right brain
+						div.field
+							h3.ui.header
+								i.marker.icon
+								div.content
+									| Position
+							div.ui.grid
+								div.three.wide.column
+									input(name='position' placeholder='1 ~ 10242' type='text')
+								div.thirteen.wide.column
+									div.ui.blue.range
+					h4.ui.horizontal.divider.header
+						i.idea.icon
+						| Detail
+					div.ui.equal.width.stackable.grid
+						div.column
+							h3.ui.header
+								i.male.icon
+								div.content
+									| Subjects
+							div#subjects
+								include ./subject.jade
+						div.column
+							h3.ui.header
+								i.lab.icon
+								div.content
+									| Picture by fMRI
+							img.ui.centered.medium.image(src="brain/2000-AD1-lh.png")
+					h4.ui.horizontal.divider.header
+						i.bar.chart.icon
+						| Chart
+					div#cc-chart
+			div.main-container
+				div.ui.segment
+					h3.ui.header
+						i.users.icon
+						div.content
+							| About us
+					h3.ui.header
+						i.thumbs.outline.up.icon
+						div.content
+							| Special thanks
+
+		include ./chart.jade
+
+		script.basic.
+			// First initial for Semantic-UI.
+			$('.ui.dropdown').dropdown();
+			$('[data-content]').popup();
+
+		script.search.
+			// Plugin-UI.
+			$('.ui.range').range({
+				min: 1,
+				max: 10242,
+				start: 1,
+				onChange: function (value) {
+					$('[name=position]').val(value);
+					updateCorrelationCoefficientChart();
+				}
+			});
+			// Prevent default submition and trigger update chart.
+			$('#search').submit(function (e) {
+				e.preventDefault();
+			});
+			$('#search input, select').on('change input', function (e) {
+				updateCorrelationCoefficientChart();
+				$('.ui.range').range('set value', $('[name=position]').val());
+			});
+			updateCorrelationCoefficientChart();;

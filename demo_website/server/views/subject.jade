@@ -1,0 +1,7 @@
+div.ui.basic.segment
+	each subject, index in subjectList || []
+		div.subject
+			if subject
+				i.huge.male.icon(data-content="Hello. I'm #{index+1} subject. I had seen this gameplay video.")
+			else
+				i.disabled.huge.male.icon
